@@ -48,6 +48,28 @@ fonctionnent comme avant.
 
 ---
 
+## 2ter. Session « déploiement + correctif Open Food Facts mobile » (16 juin 2026)
+
+Mise en ligne effective des 6 fonctionnalités, puis débogage d'un problème apparu
+seulement **en conditions réelles** (téléphone + site déployé).
+
+### Ce qu'on a fait
+
+| Quoi | Comment | Pourquoi |
+|---|---|---|
+| **Déploiement Git** | Le dépôt Git a été (re)créé directement dans le **nouveau dossier de travail `D:\inventaire-app`** (l'utilisateur ne voulait pas de dépôt Git dans `Downloads`). `git init` → `add` → `commit` → `remote add origin` → `push` vers `github.com/Sooap95/inventaire-app`. | Garder le dossier `Downloads` propre ; centraliser la source du déploiement sur `D:`. |
+| **Authentification GitHub** | Le mot de passe de compte est **refusé** par GitHub pour Git : il faut un **Personal Access Token** (classic, scope `repo`) saisi à la place du mot de passe. | GitHub a supprimé l'auth par mot de passe pour les opérations Git (sécurité). |
+| **Bump du Service Worker** | `CACHE` dans `sw.js` incrémenté (`v1` → `v2` → `v3`) à chaque déploiement. | Sans ça, les téléphones (PWA installée) gardent l'ancienne version en cache et ne voient pas les nouveautés. |
+| **Correctif Open Food Facts sur mobile** | OFF s'affichait « indisponible » sur le site déployé alors que l'API répond bien (vérifié : `HTTP 200`, `Access-Control-Allow-Origin: *`). Deux causes corrigées : (1) on **retire l'en-tête `User-Agent`** des `fetch()` — les navigateurs **interdisent** de le fixer depuis une page, ce qui faisait échouer la requête ; (2) on **exclut `openfoodfacts.org` du Service Worker** (comme Firestore) pour qu'il n'intercepte plus l'appel. Ajout d'un `console.warn` dans les `catch` pour diagnostiquer un éventuel futur échec. | L'en-tête `User-Agent` n'était utile que pour un client serveur ; en navigateur il est inutile (le navigateur envoie le sien) et nuisible. Le SW ne doit pas mettre en cache / perturber une API tierce. |
+
+### Décisions / notes
+
+- **Nouvelle source de vérité : `D:\inventaire-app`.** La copie dans `Downloads` est désormais **obsolète** — toute modification future se fait dans `D:`.
+- **Piège à retenir :** une réécriture complète de `index.html` réinitialise le bloc `firebaseConfig` en placeholder `TON_…`. Toujours **recoller la vraie config Firebase** avant de redéployer.
+- Si OFF venait à re-bloquer : ce ne serait plus le code mais l'appareil (bloqueur de pub type Brave/uBlock, VPN/filtrage). Le `console.warn` ajouté donne la raison exacte (F12 → Console).
+
+---
+
 ## 3. Décisions structurantes et raisons
 
 - **Un seul fichier `.html` conservé** comme cœur de l'appli (pas de framework, pas de build) — pour rester simple à maintenir et modifiable directement dans un éditeur de texte.
@@ -62,7 +84,9 @@ fonctionnent comme avant.
 
 ## 4. Fichiers livrés
 
-Dossier `C:\Users\konig\Downloads\inventaire-app\` :
+Dossier de travail / dépôt Git : **`D:\inventaire-app\`** (poussé sur
+`github.com/Sooap95/inventaire-app`). ⚠️ L'ancienne copie `C:\Users\konig\Downloads\inventaire-app\`
+est **obsolète** — ne plus l'éditer.
 
 - `index.html` — l'application complète.
 - `manifest.json` — métadonnées d'installation PWA.
@@ -71,19 +95,30 @@ Dossier `C:\Users\konig\Downloads\inventaire-app\` :
 - `JOURNAL-PROJET.md` — ce document.
 
 Déploiement effectué : dépôt GitHub créé, Pages activé, projet Firebase + base Firestore
-créés, config collée dans `index.html`, règles publiées. Statut : **opérationnel à 3**.
+créés, auth anonyme activée, config collée dans `index.html`, règles publiées.
+**Statut : déployé et opérationnel à 3, Open Food Facts compris (confirmé sur téléphone le 16 juin 2026).**
 
 ---
 
 ## 5. Idées d'amélioration pour plus tard
 
-> ✅ Déjà livrées depuis : authentification anonyme, identité « qui a fait quoi »
+> ✅ Déjà livrées : authentification anonyme, identité « qui a fait quoi »
 > (`lastEditedBy`), suggestions « à anticiper », stats de consommation, recherche vocale,
-> et bilingue FR/DE (voir § 2bis).
+> bilingue FR/DE (§ 2bis), et déploiement + correctif OFF mobile (§ 2ter).
 
-- **Notifications** : alerte (notification push ou simple badge) quand un produit passe en stock bas, plutôt que de devoir ouvrir l'appli pour le voir.
-- **Gestion multi-foyers / multi-listes** : si un jour besoin de plusieurs inventaires séparés (ex. maison + chalet), prévoir un identifiant de "foyer" dans Firestore plutôt qu'une collection unique partagée par tous.
-- **Bouton "associer plusieurs codes-barres"** : certains produits existent en plusieurs formats/marques ; permettre d'associer plusieurs codes-barres à un même produit plutôt qu'un seul.
-- **Sauvegarde automatique périodique** : export JSON automatique (ex. hebdomadaire) vers un espace de stockage personnel, en complément de Firestore, pour une sécurité supplémentaire.
-- **Photo produit (Open Food Facts)** : OFF renvoie déjà une vignette (`image_front_small_url`) — l'afficher sur la carte produit serait peu coûteux.
-- **Stats avancées** : tendance de consommation, alerte automatique « tu rachètes ce produit plus souvent qu'avant ».
+### Décisions prises sur les idées précédentes (avis utilisateur, 16 juin 2026)
+
+- ❌ **Notifications** — *écartée.* L'utilisateur ne veut pas de notifications.
+- ❌ **Gestion multi-foyers / multi-listes** — *écartée.* Une seule résidence, inutile.
+- 🟢 **Photo produit (Open Food Facts)** — *retenue (bonne idée).* OFF renvoie déjà une vignette (`image_front_small_url`) ; l'afficher sur la carte produit serait peu coûteux. **Prochaine candidate prioritaire.**
+- 🟡 **Sauvegarde automatique périodique** — *à considérer (« pourquoi pas »).* Export JSON automatique (ex. hebdomadaire) en complément de Firestore.
+- ⏸️ **Bouton « associer plusieurs codes-barres »** — *en attente.* Indécis pour le moment ; à rediscuter si le besoin se présente (produits multi-formats/marques).
+- ⏸️ **Stats avancées** — *reportée (« à voir plus tard »).* Tendance de consommation, alerte « tu rachètes ce produit plus souvent qu'avant ».
+
+### 5 nouvelles idées potentielles
+
+1. **Date de péremption + alerte « à consommer bientôt »** : champ optionnel `expiryDate` par produit (ou par lot), avec un badge « ⏳ Périme bientôt » et un tri dédié. Utile surtout pour le frais (crèmerie, viande). Complète bien la logique de stock existante.
+2. **Quantité achetée modifiable au passage en caisse** : en mode « Faire les courses », pouvoir dire « j'en ai pris 2 » au lieu de toujours remettre au niveau cible. Rendrait le `restockHistory` (et donc les stats) plus fidèle à la réalité.
+3. **Saisie de la quantité par la voix** : étendre la recherche vocale déjà en place pour dicter aussi une action complète (« ajoute 3 paquets de pâtes »), pratique les mains prises en cuisine/magasin.
+4. **Regroupement « repas / recettes »** : définir des ensembles de produits (ex. « tacos », « petit-déj ») qu'on peut ajouter d'un coup à la liste de courses. Accélère la préparation des courses récurrentes.
+5. **Mini tableau de bord d'accueil** : en haut de l'onglet Inventaire, un résumé « cette semaine » (nb d'articles achetés, par qui, montant estimé si on ajoute un prix indicatif) — une vue d'ensemble rapide sans aller dans l'onglet Stats.
