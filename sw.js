@@ -7,7 +7,7 @@
 // ⚠️ Incrémente CACHE (v1 → v2…) à chaque mise à jour de l'appli pour
 //    forcer le rafraîchissement chez les utilisateurs.
 // ================================================================
-const CACHE = 'inventaire-maison-v2';
+const CACHE = 'inventaire-maison-v3';
 
 // Ressources de base mises en cache à l'installation
 const CORE = [
@@ -41,9 +41,10 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
-  // Ne JAMAIS intercepter Firestore / Google APIs : laisse le SDK gérer
-  // le temps réel et sa propre persistance hors-ligne.
-  if (/firestore\.googleapis\.com|googleapis\.com|firebaseio\.com|google\.firestore/.test(req.url)) {
+  // Ne JAMAIS intercepter les API tierces : Firestore/Google APIs (gérées par le
+  // SDK) ET Open Food Facts (lookup produit en direct). Les laisser passer évite
+  // que le cache du SW interfère avec ces requêtes réseau.
+  if (/firestore\.googleapis\.com|googleapis\.com|firebaseio\.com|google\.firestore|openfoodfacts\.org/.test(req.url)) {
     return;
   }
 

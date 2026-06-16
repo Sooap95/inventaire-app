@@ -2192,7 +2192,9 @@ function guessAisle(categoryTags) {
   return '';
 }
 
-const OFF_HEADERS = { 'User-Agent': 'Inventaire-Maison/1.0' };
+// NB : les navigateurs interdisent de fixer "User-Agent" en fetch (ils envoient
+// le leur). On n'ajoute donc aucun en-tête personnalisé → requête GET "simple",
+// sans préflight CORS, pour une compatibilité maximale (mobile/PWA inclus).
 let offNameTimer = null;
 let offFromSelection = false; // évite la boucle après sélection dans le dropdown
 
@@ -2228,7 +2230,7 @@ function offBarcodeLookup() {
     + `?fields=product_name,product_name_fr,product_name_de,brands,categories_tags,stores_tags,quantity,image_front_small_url`
     + `&lc=${currentLang}`;
 
-  fetch(url, { headers: OFF_HEADERS })
+  fetch(url)
     .then(r => r.json())
     .then(data => {
       spinner.classList.remove('show');
@@ -2248,7 +2250,8 @@ function offBarcodeLookup() {
         setOffBanner(t('off_not_found'), 'warn');
       }
     })
-    .catch(() => {
+    .catch(err => {
+      console.warn('OFF lookup code-barres KO :', err);
       spinner.classList.remove('show');
       setOffBanner(t('off_unavailable'), 'warn');
     });
@@ -2269,13 +2272,13 @@ function offSearchName(q) {
     + `&fields=product_name,product_name_fr,product_name_de,brands,code,categories_tags,quantity`
     + `&lc=${currentLang}&cc=ch`;
 
-  fetch(url, { headers: OFF_HEADERS })
+  fetch(url)
     .then(r => r.json())
     .then(data => {
       const prods = (data && data.products) || [];
       renderOffDropdown(prods);
     })
-    .catch(() => closeOffDropdown());
+    .catch(err => { console.warn('OFF recherche nom KO :', err); closeOffDropdown(); });
 }
 
 function renderOffDropdown(prods) {
