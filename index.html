@@ -1,0 +1,2503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Inventaire Maison</title>
+
+<!-- === PWA / META MOBILE === -->
+<meta name="theme-color" content="#3d6b4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Inventaire">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%233d6b4f'/%3E%3Ctext%20x='50'%20y='55'%20font-size='58'%20text-anchor='middle'%20dominant-baseline='central'%3E🏠%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E🏠%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Scanner de code-barres (EAN/UPC/QR) — fonctionne iOS + Android, nécessite https -->
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<!-- Firebase (synchro temps réel entre les 3 utilisateurs) — API compat (script classique) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Authentification anonyme (sécurise l'accès Firestore) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --border: #e2ddd6;
+    --text: #1a1a18;
+    --muted: #8a867e;
+    --accent: #3d6b4f;
+    --accent-light: #e8f0eb;
+    --danger: #c0392b;
+    --danger-light: #fdf0ee;
+    --warn: #d4750a;
+    --warn-light: #fdf4e8;
+    --ok: #3d6b4f;
+    --ok-light: #e8f0eb;
+    --radius: 8px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  header {
+    background: var(--accent);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  header .subtitle { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: var(--radius);
+    border: none; cursor: pointer; font-size: 13px; font-weight: 600;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-white { background: white; color: var(--accent); }
+  .btn-white:hover { opacity: 0.9; }
+  .btn-accent { background: var(--accent); color: white; }
+  .btn-accent:hover { opacity: 0.85; }
+  .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-danger:hover { opacity: 0.85; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  .main { max-width: 900px; margin: 0 auto; padding: 16px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--surface); border-radius: var(--radius); padding: 4px; border: 1px solid var(--border); }
+  .tab { flex: 1; padding: 8px; text-align: center; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); border: none; background: none; transition: all 0.15s; }
+  .tab.active { background: var(--accent); color: white; }
+  .tab:not(.active):hover { background: var(--bg); color: var(--text); }
+
+  /* Stats bar */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+    box-shadow: var(--shadow);
+  }
+  .stat-value { font-size: 24px; font-weight: 800; line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-danger .stat-value { color: var(--danger); }
+  .stat-warn .stat-value { color: var(--warn); }
+  .stat-ok .stat-value { color: var(--ok); }
+
+  /* Filter bar */
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .search-wrap { flex: 1; min-width: 160px; position: relative; display: flex; }
+  .search-input {
+    flex: 1; min-width: 0; padding: 8px 12px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-size: 14px; background: var(--surface);
+  }
+  .search-input:focus { outline: none; border-color: var(--accent); }
+  .cat-filter { padding: 7px 12px; border-radius: var(--radius); border: 1.5px solid var(--border); background: var(--surface); font-size: 13px; cursor: pointer; }
+  .cat-filter:focus { outline: none; }
+
+  /* === BOUTON MICRO (recherche vocale) === */
+  .mic-btn {
+    flex: 0 0 auto; width: 40px; padding: 0; border-radius: var(--radius);
+    border: 1.5px solid var(--border); background: var(--surface); cursor: pointer;
+    font-size: 16px; display: inline-flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .mic-btn:hover { background: var(--bg); }
+  .mic-btn.listening { background: var(--danger); border-color: var(--danger); color: #fff; animation: micPulse 1s infinite; }
+  @keyframes micPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(192,57,43,0.55); }
+    70%  { box-shadow: 0 0 0 12px rgba(192,57,43,0); }
+    100% { box-shadow: 0 0 0 0 rgba(192,57,43,0); }
+  }
+
+  /* Product list */
+  .product-grid { display: flex; flex-direction: column; gap: 8px; }
+
+  .product-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: var(--shadow); transition: border-color 0.15s, background 0.4s;
+  }
+  .product-card:hover { border-color: #c5bfb6; }
+  .product-card.status-low { border-left: 3px solid var(--danger); }
+  .product-card.status-medium { border-left: 3px solid var(--warn); }
+  .product-card.status-ok { border-left: 3px solid var(--ok); }
+  .product-card.voice-hit { background: var(--warn-light); border-color: var(--warn); }
+
+  .product-info { flex: 1; min-width: 0; }
+  .product-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .product-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .stock-control { display: flex; align-items: center; gap: 6px; }
+  .stock-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--border);
+    background: var(--bg); cursor: pointer; font-size: 16px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; transition: all 0.1s;
+    line-height: 1;
+  }
+  .stock-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  .stock-value { font-size: 18px; font-weight: 800; min-width: 28px; text-align: center; }
+  .stock-value.low { color: var(--danger); }
+  .stock-value.medium { color: var(--warn); }
+  .stock-value.ok { color: var(--ok); }
+
+  .stock-unit { font-size: 11px; color: var(--muted); }
+
+  .product-actions { display: flex; gap: 6px; align-items: center; }
+  .icon-btn { background: none; border: 1.5px solid var(--border); border-radius: 6px; padding: 5px 8px; cursor: pointer; font-size: 14px; transition: all 0.15s; }
+  .icon-btn:hover { background: var(--bg); }
+
+  /* Status badge */
+  .status-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badge-low { background: var(--danger-light); color: var(--danger); }
+  .badge-medium { background: var(--warn-light); color: var(--warn); }
+  .badge-ok { background: var(--ok-light); color: var(--ok); }
+  .badge-suggested { background: var(--warn-light); color: var(--warn); }
+
+  /* Shopping list */
+  .shopping-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .shopping-header h2 { font-size: 17px; font-weight: 800; }
+
+  .shopping-section { margin-bottom: 20px; }
+  .shopping-section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .shopping-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    margin-bottom: 6px; box-shadow: var(--shadow);
+  }
+  .shopping-item.urgent { border-left: 3px solid var(--danger); }
+  .shopping-item.needed { border-left: 3px solid var(--warn); }
+  .shopping-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .shopping-item label { flex: 1; cursor: pointer; font-size: 14px; }
+  .shopping-item .need-qty { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .shopping-item.checked label { text-decoration: line-through; color: var(--muted); }
+
+  /* === SECTION "À ANTICIPER" (produits suggérés) === */
+  .anticipate-section .shopping-section-title { color: var(--warn); border-bottom-style: dashed; border-bottom-color: var(--warn); }
+  .shopping-item.suggested {
+    border-left: 3px dashed var(--warn);
+    border-style: dashed; border-color: var(--warn);
+    background: #fffbf4;
+  }
+  .shop-mode-card.suggested {
+    border: 1.5px dashed var(--warn);
+    background: #fffbf4;
+  }
+
+  .empty-list { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-list .emoji { font-size: 40px; margin-bottom: 10px; }
+  .empty-list p { font-size: 14px; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; padding: 20px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--surface); border-radius: 12px;
+    width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .modal-header {
+    padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-header h3 { font-size: 16px; font-weight: 800; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); line-height: 1; }
+  .modal-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; position: relative; }
+  .field label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .field input, .field select {
+    padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-size: 14px; background: var(--surface); width: 100%;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* === OPEN FOOD FACTS : bandeau + spinner + dropdown autocomplete === */
+  .off-banner { font-size: 12px; padding: 8px 10px; border-radius: var(--radius); line-height: 1.4; display: none; }
+  .off-banner.show { display: block; }
+  .off-banner.ok { background: var(--ok-light); color: var(--ok); }
+  .off-banner.warn { background: var(--warn-light); color: var(--warn); }
+  .off-spinner {
+    position: absolute; right: 10px; top: 32px; width: 16px; height: 16px;
+    border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.7s linear infinite; display: none;
+  }
+  .off-spinner.show { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .off-dropdown {
+    position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px;
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18); z-index: 50;
+    max-height: 240px; overflow-y: auto; display: none;
+  }
+  .off-dropdown.show { display: block; }
+  .off-opt { padding: 9px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--border); }
+  .off-opt:last-child { border-bottom: none; }
+  .off-opt:hover { background: var(--accent-light); }
+  .off-opt .off-brand { color: var(--muted); font-size: 12px; }
+  .off-credit { font-size: 11px; color: var(--muted); text-align: center; display: none; }
+  .off-credit.show { display: block; }
+  .off-credit a { color: var(--accent); }
+
+  /* QR Modal */
+  .qr-container { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 10px 0; }
+  #qr-display { background: white; padding: 14px; border-radius: 8px; border: 1px solid var(--border); }
+  .qr-product-name { font-size: 16px; font-weight: 800; }
+  .qr-instructions { font-size: 12px; color: var(--muted); text-align: center; max-width: 280px; line-height: 1.5; }
+  .qr-url { font-size: 10px; color: var(--muted); word-break: break-all; text-align: center; max-width: 280px; }
+
+  /* === TOAST (notifications temporaires) === */
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(10px);
+    background: var(--text); color: #fff; padding: 12px 22px; border-radius: 24px;
+    font-size: 14px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.28);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s;
+    z-index: 500; max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* === BADGE "BIENTÔT" (prévision rupture) === */
+  .badge-soon { background: var(--warn-light); color: var(--warn); }
+
+  /* === LIGNE DERNIER RÉAPPROVISIONNEMENT === */
+  .product-restock { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .product-editor { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* === LABELS DE BOUTONS MASQUABLES SUR MOBILE === */
+  .btn-label { margin-left: 2px; }
+
+  /* === MODE "FAIRE LES COURSES" === */
+  .shop-view-toggle { display: flex; gap: 6px; }
+  .progress-wrap { margin-bottom: 18px; }
+  .progress-label { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+  .progress-bar { height: 10px; background: var(--border); border-radius: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); width: 0; transition: width 0.35s ease; }
+
+  .shop-mode-card {
+    display: flex; align-items: center; gap: 12px; min-height: 60px;
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius);
+    padding: 12px 14px; margin-bottom: 8px; box-shadow: var(--shadow);
+    transition: opacity 0.2s, background 0.4s;
+  }
+  .shop-mode-card.urgent { border-left: 3px solid var(--danger); }
+  .shop-mode-card.needed { border-left: 3px solid var(--warn); }
+  .shop-mode-card.done { opacity: 0.6; background: var(--ok-light); border-left-color: var(--ok); }
+  .shop-mode-card.voice-hit { background: var(--warn-light); border-color: var(--warn); }
+  .sm-info { flex: 1; min-width: 0; }
+  .sm-name { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .sm-qty { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .sm-qty strong { color: var(--accent); }
+  .btn-buy {
+    background: var(--accent); color: #fff; border: none; border-radius: var(--radius);
+    padding: 0 18px; min-height: 48px; font-size: 14px; font-weight: 700; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: transform 0.1s;
+  }
+  .btn-buy:active { transform: scale(0.96); }
+  .shop-mode-card.done .btn-buy { background: var(--ok); }
+
+  /* === MICRO FLOTTANT (mode courses) === */
+  .mic-float {
+    position: fixed; right: 18px; bottom: 24px; z-index: 150;
+    width: 58px; height: 58px; border-radius: 50%; border: none;
+    background: var(--accent); color: #fff; font-size: 24px; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.28); display: none;
+    align-items: center; justify-content: center;
+  }
+  .mic-float.visible { display: inline-flex; }
+  .mic-float.listening { background: var(--danger); animation: micPulse 1s infinite; }
+
+  /* === SCANNER CODE-BARRES === */
+  #reader { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+  #reader video { border-radius: var(--radius); display: block; width: 100% !important; }
+
+  /* === STATS / GRAPHIQUE === */
+  .stats-chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); margin-bottom: 14px; }
+  #stats-canvas { width: 100%; height: 180px; display: block; }
+  .stats-info { font-size: 13px; color: var(--text); line-height: 1.7; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); margin-bottom: 14px; }
+  .stats-info strong { color: var(--accent); }
+
+  /* === ONBOARDING : choix langue / prénom === */
+  .lang-choice { display: flex; flex-direction: column; gap: 12px; }
+  .lang-btn {
+    display: flex; align-items: center; gap: 12px; justify-content: center;
+    padding: 18px; border: 2px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); cursor: pointer; font-size: 18px; font-weight: 700;
+    transition: all 0.15s;
+  }
+  .lang-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+
+  /* === IMPRESSION OPTIMISÉE — liste de courses uniquement === */
+  #print-area { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area {
+      display: block !important; position: absolute; left: 0; top: 0; width: 100%;
+      padding: 0 6mm; color: #000; font-size: 12pt;
+    }
+    header, .tabs, .filter-bar, .stats-bar, .modal-overlay, .toast,
+    .header-actions, .shopping-header, .shop-view-toggle, .mic-float,
+    #tab-inventory, #tab-shopping, #tab-qr, #tab-stats { display: none !important; }
+    body { background: #fff; }
+    @page { margin: 12mm; }
+    .print-title { font-size: 19pt; font-weight: 800; margin-bottom: 2px; }
+    .print-date { font-size: 10pt; color: #444; margin-bottom: 14px; }
+    .print-grid { column-count: 2; column-gap: 16mm; }
+    .print-section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 10px; }
+    .print-aisle {
+      font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid #999; padding-bottom: 2px; margin-bottom: 4px;
+    }
+    .print-item { font-size: 11pt; padding: 3px 0; display: flex; align-items: flex-start; gap: 8px; break-inside: avoid; }
+    .print-item::before { content: '\2610'; font-size: 14pt; line-height: 1; }
+    .print-qty { color: #444; font-weight: 600; }
+  }
+
+  @media (max-width: 480px) {
+    .stats-bar { grid-template-columns: repeat(3, 1fr); }
+    .stat-value { font-size: 20px; }
+    .product-actions { flex-direction: column; }
+    .btn-label { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1 data-i18n="app_title">🏠 Inventaire Maison</h1>
+    <div class="subtitle" id="last-update" data-i18n="loading">Chargement...</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-white btn-sm" onclick="exportData()" data-i18n-title="export_title">💾<span class="btn-label" data-i18n="btn_export">Export</span></button>
+    <button class="btn btn-white btn-sm" onclick="triggerImport()" data-i18n-title="import_title">📂<span class="btn-label" data-i18n="btn_import">Import</span></button>
+    <button class="btn btn-white btn-sm" onclick="openAddModal()" data-i18n="btn_add_product">+ Produit</button>
+    <button class="btn btn-white btn-sm" onclick="openSettings()" data-i18n-title="settings_title">⚙️</button>
+  </div>
+</header>
+
+<!-- Input fichier caché pour l'import JSON -->
+<input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="handleImportFile(this)">
+
+<div class="main">
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('inventory')" data-i18n="tab_inventory">📦 Inventaire</button>
+    <button class="tab" onclick="switchTab('shopping')" data-i18n="tab_shopping">🛒 Liste de courses</button>
+    <button class="tab" onclick="switchTab('qr')" data-i18n="tab_scan">📷 Scan</button>
+    <button class="tab" onclick="switchTab('stats')" data-i18n="tab_stats">📊 Stats</button>
+  </div>
+
+  <!-- === TAB INVENTAIRE === -->
+  <div id="tab-inventory">
+    <div class="stats-bar">
+      <div class="stat-card stat-danger">
+        <div class="stat-value" id="stat-low">0</div>
+        <div class="stat-label" data-i18n="stat_to_buy">À racheter</div>
+      </div>
+      <div class="stat-card stat-warn">
+        <div class="stat-value" id="stat-medium">0</div>
+        <div class="stat-label" data-i18n="stat_low">Stock faible</div>
+      </div>
+      <div class="stat-card stat-ok">
+        <div class="stat-value" id="stat-ok">0</div>
+        <div class="stat-label" data-i18n="stat_ok">OK</div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <input class="search-input" type="text" data-i18n-ph="search_ph" placeholder="🔍 Rechercher un produit..." oninput="renderInventory()" id="search-input">
+      </div>
+      <button class="mic-btn" id="mic-inventory" data-i18n-title="voice_title" title="Recherche vocale" style="display:none">🎤</button>
+      <button class="cat-filter" onclick="openScanner()" data-i18n-title="scan_title" title="Scanner un code-barres" style="cursor:pointer">📷</button>
+      <select class="cat-filter" onchange="renderInventory()" id="cat-filter">
+        <option value="" data-i18n="all_categories">Toutes les catégories</option>
+      </select>
+    </div>
+
+    <div class="product-grid" id="product-grid"></div>
+  </div>
+
+  <!-- === TAB COURSES === -->
+  <div id="tab-shopping" style="display:none">
+    <div class="shopping-header">
+      <h2 data-i18n="shopping_title">Liste de courses</h2>
+      <div class="shop-view-toggle">
+        <button class="btn btn-accent btn-sm" id="sv-list-btn" onclick="setShoppingView('list')" data-i18n="sv_list">📝 Liste</button>
+        <button class="btn btn-outline btn-sm" id="sv-shop-btn" onclick="setShoppingView('shop')" data-i18n="sv_shop">🛍️ Faire les courses</button>
+      </div>
+    </div>
+
+    <!-- Vue 1 : liste classique (cases à cocher, impression, copie) -->
+    <div id="shopping-list-view">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-outline btn-sm" onclick="printShopping()" data-i18n="btn_print">🖨️ Imprimer</button>
+        <button class="btn btn-outline btn-sm" onclick="copyShopping()" data-i18n="btn_copy">📋 Copier</button>
+      </div>
+      <div id="shopping-list-content"></div>
+    </div>
+
+    <!-- Vue 2 : mode tactile "Faire les courses" -->
+    <div id="shopping-mode-view" style="display:none">
+      <div id="shopping-mode-content"></div>
+    </div>
+  </div>
+
+  <!-- === TAB SCAN & QR === -->
+  <div id="tab-qr" style="display:none">
+    <div style="margin-bottom:14px">
+      <p style="font-size:13px;color:var(--muted);line-height:1.6" data-i18n="scan_intro">
+        Scanne le code-barres d'un produit pour le retrouver et ajuster son stock en un geste.
+      </p>
+    </div>
+
+    <button class="btn btn-accent" onclick="openScanner()"
+            style="width:100%;justify-content:center;min-height:54px;font-size:16px;margin-bottom:24px" data-i18n="scan_btn">
+      📷 Scanner un code-barres
+    </button>
+
+    <div class="shopping-section-title" data-i18n="open_on_other">Ouvrir l'appli sur un autre appareil</div>
+    <div class="qr-container">
+      <div id="app-qr-display"></div>
+      <p class="qr-instructions" data-i18n="qr_instructions">Scanne ce QR avec un autre téléphone pour ouvrir cette même appli.</p>
+      <div class="qr-url" id="app-qr-url"></div>
+    </div>
+  </div>
+
+  <!-- === TAB STATS === -->
+  <div id="tab-stats" style="display:none">
+    <div class="field" style="margin-bottom:14px">
+      <label data-i18n="stats_select_label">Produit</label>
+      <select id="stats-select" onchange="renderStats()"></select>
+    </div>
+    <div class="stats-chart-wrap">
+      <canvas id="stats-canvas"></canvas>
+    </div>
+    <div class="stats-info" id="stats-info"></div>
+    <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="adjustThresholdsFromStats()" data-i18n="stats_adjust_btn">Ajuster les seuils</button>
+  </div>
+</div>
+
+<!-- Modal Ajout/Edit produit -->
+<div class="modal-overlay hidden" id="product-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title" data-i18n="modal_add_title">Ajouter un produit</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label data-i18n="f_name">Nom du produit *</label>
+        <input type="text" id="f-name" data-i18n-ph="f_name_ph" placeholder="Ex: Pâtes spaghetti" autocomplete="off">
+        <div class="off-dropdown" id="off-dropdown"></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label data-i18n="f_category">Catégorie</label>
+          <select id="f-cat">
+            <option value="Alimentation" data-cat="Alimentation">Alimentation</option>
+            <option value="Hygiène" data-cat="Hygiène">Hygiène</option>
+            <option value="Ménager" data-cat="Ménager">Ménager</option>
+            <option value="Pharmacie" data-cat="Pharmacie">Pharmacie</option>
+            <option value="Bébé" data-cat="Bébé">Bébé</option>
+            <option value="Autre" data-cat="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-i18n="f_unit">Unité</label>
+          <input type="text" id="f-unit" data-i18n-ph="f_unit_ph" placeholder="kg, L, pcs..." value="pcs">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label data-i18n="f_stock">Stock actuel</label>
+          <input type="number" id="f-stock" value="1" min="0" step="1">
+        </div>
+        <div class="field">
+          <label data-i18n="f_threshold">Seuil minimum</label>
+          <input type="number" id="f-threshold" value="1" min="0" step="1">
+        </div>
+      </div>
+      <div class="field">
+        <label data-i18n="f_target">Quantité cible (à racheter)</label>
+        <input type="number" id="f-target" value="3" min="1" step="1">
+      </div>
+      <div class="field">
+        <label data-i18n="f_frequency">Fréquence de consommation</label>
+        <select id="f-frequency">
+          <option value="" data-i18n="freq_none">— Non définie —</option>
+          <option value="quotidien" data-freq="quotidien">Quotidien</option>
+          <option value="hebdomadaire" data-freq="hebdomadaire">Hebdomadaire</option>
+          <option value="mensuel" data-freq="mensuel">Mensuel</option>
+          <option value="trimestriel" data-freq="trimestriel">Trimestriel</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="f_aisle">Rayon Coop</label>
+        <select id="f-aisle">
+          <option value="" data-i18n="aisle_none">— Non défini —</option>
+          <option value="🥦 Fruits & Légumes" data-aisle="🥦 Fruits & Légumes">🥦 Fruits &amp; Légumes</option>
+          <option value="🥩 Viande & Poisson" data-aisle="🥩 Viande & Poisson">🥩 Viande &amp; Poisson</option>
+          <option value="🧀 Crèmerie & Charcuterie" data-aisle="🧀 Crèmerie & Charcuterie">🧀 Crèmerie &amp; Charcuterie</option>
+          <option value="🍞 Boulangerie & Pâtisserie" data-aisle="🍞 Boulangerie & Pâtisserie">🍞 Boulangerie &amp; Pâtisserie</option>
+          <option value="🥫 Épicerie sèche" data-aisle="🥫 Épicerie sèche">🥫 Épicerie sèche</option>
+          <option value="🧃 Boissons" data-aisle="🧃 Boissons">🧃 Boissons</option>
+          <option value="🧊 Surgelés" data-aisle="🧊 Surgelés">🧊 Surgelés</option>
+          <option value="🫙 Conserves & Sauces" data-aisle="🫙 Conserves & Sauces">🫙 Conserves &amp; Sauces</option>
+          <option value="🧴 Hygiène & Beauté" data-aisle="🧴 Hygiène & Beauté">🧴 Hygiène &amp; Beauté</option>
+          <option value="🧹 Entretien ménager" data-aisle="🧹 Entretien ménager">🧹 Entretien ménager</option>
+          <option value="👶 Bébé" data-aisle="👶 Bébé">👶 Bébé</option>
+          <option value="💊 Pharmacie" data-aisle="💊 Pharmacie">💊 Pharmacie</option>
+          <option value="🐾 Animaux" data-aisle="🐾 Animaux">🐾 Animaux</option>
+          <option value="📦 Autre" data-aisle="📦 Autre">📦 Autre</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="f_notes">Notes (optionnel)</label>
+        <input type="text" id="f-notes" data-i18n-ph="f_notes_ph" placeholder="Marque préférée, variante...">
+      </div>
+      <div class="field">
+        <label data-i18n="f_barcode">Code-barres (optionnel)</label>
+        <input type="text" id="f-barcode" data-i18n-ph="f_barcode_ph" placeholder="EAN scanné ou saisi" inputmode="numeric">
+        <div class="off-spinner" id="off-spinner"></div>
+      </div>
+      <div class="off-banner" id="off-banner"></div>
+      <div class="off-credit" id="off-credit">🌿 <a href="https://openfoodfacts.org" target="_blank" rel="noopener" data-i18n="off_credit">Données Open Food Facts</a></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()" data-i18n="btn_cancel">Annuler</button>
+      <button class="btn btn-accent" onclick="saveProduct()" id="modal-save-btn" data-i18n="btn_add">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Scanner de code-barres -->
+<div class="modal-overlay hidden" id="scan-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 data-i18n="scan_modal_title">📷 Scanner un code-barres</h3>
+      <button class="modal-close" onclick="closeScanner()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="reader" style="width:100%"></div>
+      <p class="qr-instructions" id="scan-hint" data-i18n="scan_aim">Vise le code-barres du produit…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal "code-barres inconnu" : associer à un produit existant ou en créer un -->
+<div class="modal-overlay hidden" id="link-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 data-i18n="link_title">Code-barres inconnu</h3>
+      <button class="modal-close" onclick="closeLinkModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="text-align:center;font-size:14px" id="link-text"></p>
+      <div class="field">
+        <label data-i18n="link_to_existing">Associer à un produit existant</label>
+        <select id="link-select"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="createFromScan()" data-i18n="link_new">+ Nouveau produit</button>
+      <button class="btn btn-accent" onclick="linkToExisting()" data-i18n="link_assoc">🔗 Associer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal mise à jour rapide (depuis QR) -->
+<div class="modal-overlay hidden" id="quick-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="quick-modal-title" data-i18n="quick_title">Mise à jour rapide</h3>
+      <button class="modal-close" onclick="document.getElementById('quick-modal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center">
+        <div style="font-size:14px;color:var(--muted);margin-bottom:10px" data-i18n="quick_current">Stock actuel</div>
+        <div class="stock-control" style="justify-content:center">
+          <button class="stock-btn" style="width:40px;height:40px;font-size:20px" onclick="quickAdjust(-1)">−</button>
+          <span class="stock-value" id="quick-stock-display" style="font-size:32px;min-width:60px">0</span>
+          <button class="stock-btn" style="width:40px;height:40px;font-size:20px" onclick="quickAdjust(1)">+</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px" id="quick-unit-display"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('quick-modal').classList.add('hidden')" data-i18n="btn_cancel">Annuler</button>
+      <button class="btn btn-accent" onclick="saveQuickUpdate()" data-i18n="btn_save">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mini-modale de confirmation "Acheté" (mode Faire les courses) -->
+<div class="modal-overlay hidden" id="buy-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="buy-modal-title" data-i18n="buy_title">Acheté</h3>
+      <button class="modal-close" onclick="document.getElementById('buy-modal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="buy-modal-text" style="font-size:16px;text-align:center;line-height:1.5"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('buy-modal').classList.add('hidden')" data-i18n="btn_cancel">Annuler</button>
+      <button class="btn btn-accent" onclick="confirmBuy()" data-i18n="buy_confirm">✅ Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Paramètres (prénom + langue) -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 data-i18n="settings_title">Paramètres</h3>
+      <button class="modal-close" onclick="document.getElementById('settings-modal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label data-i18n="settings_name">Ton prénom</label>
+        <input type="text" id="settings-name" maxlength="24">
+      </div>
+      <div class="field">
+        <label data-i18n="settings_lang">Langue</label>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" id="lang-fr-btn" style="flex:1;justify-content:center" onclick="setLang('fr')">🇫🇷 Français</button>
+          <button class="btn btn-outline" id="lang-de-btn" style="flex:1;justify-content:center" onclick="setLang('de')">🇩🇪 Deutsch</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-accent" onclick="saveSettings()" data-i18n="btn_save">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Onboarding : choix de la langue (1er lancement) -->
+<div class="modal-overlay hidden" id="lang-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 data-i18n="lang_choose">Choisis ta langue · Wähle deine Sprache</h3>
+    </div>
+    <div class="modal-body">
+      <div class="lang-choice">
+        <button class="lang-btn" onclick="chooseLang('fr')">🇫🇷 Français</button>
+        <button class="lang-btn" onclick="chooseLang('de')">🇩🇪 Deutsch</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Onboarding : choix du prénom (1er lancement) -->
+<div class="modal-overlay hidden" id="name-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 data-i18n="name_welcome">Bienvenue !</h3>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:15px" data-i18n="name_question">Quel est ton prénom ?</p>
+      <div class="field">
+        <input type="text" id="onboard-name" maxlength="24" oninput="document.getElementById('onboard-go').disabled = !this.value.trim()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-accent" id="onboard-go" disabled onclick="finishNameOnboarding()" data-i18n="name_go">C'est parti</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast (notification temporaire) -->
+<div class="toast" id="toast"></div>
+
+<!-- Micro flottant (mode courses) -->
+<button class="mic-float" id="mic-float" data-i18n-title="voice_title" title="Recherche vocale">🎤</button>
+
+<!-- Zone d'impression (remplie dynamiquement avant impression) -->
+<div id="print-area"></div>
+
+<script>
+// ================================================================
+// ⚙️ CONFIG FIREBASE — À REMPLIR (voir README, étape 2)
+// ----------------------------------------------------------------
+// Colle ici la config de TON projet Firebase pour activer la synchro
+// temps réel entre les 3 téléphones. Tant que les valeurs commencent
+// par "TON_", l'appli tourne en mode LOCAL (localStorage), sans synchro.
+// ================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAfzXb6eSKaFXPc7kkLnXfmHcO1kvpuCSk",
+  authDomain: "inventaire-maison-8fd95.firebaseapp.com",
+  projectId: "inventaire-maison-8fd95",
+  storageBucket: "inventaire-maison-8fd95.firebasestorage.app",
+  messagingSenderId: "272639034410",
+  appId: "1:272639034410:web:18c837ff78c3eefa5faf53"
+};
+const FB_COLLECTION = 'products'; // nom de la collection Firestore (à laisser tel quel)
+
+// ================================================================
+// INTERNATIONALISATION (fr / de) — feature #6
+// ================================================================
+const TRANSLATIONS = {
+  fr: {
+    doc_title: 'Inventaire Maison',
+    app_title: '🏠 Inventaire Maison',
+    loading: 'Chargement...',
+    btn_export: 'Export', btn_import: 'Import', btn_add_product: '+ Produit',
+    export_title: 'Exporter en JSON', import_title: 'Importer un JSON',
+    settings_title: 'Paramètres', voice_title: 'Recherche vocale',
+    // Onglets
+    tab_inventory: '📦 Inventaire', tab_shopping: '🛒 Liste de courses', tab_scan: '📷 Scan', tab_stats: '📊 Stats',
+    // Stats bar
+    stat_to_buy: 'À racheter', stat_low: 'Stock faible', stat_ok: 'OK',
+    // Filtres
+    search_ph: '🔍 Rechercher un produit...', scan_title: 'Scanner un code-barres', all_categories: 'Toutes les catégories',
+    // Statuts produit
+    status_low: 'À racheter', status_medium: 'Stock faible', status_ok: 'OK',
+    badge_soon: '⏰ Bientôt', badge_suggested: 'Suggéré', badge_urgent: 'Urgent', badge_low: 'Faible',
+    last_buy: '🕓 Dernier achat : {time}', edited_by: '✏️ Modifié par {name} · {time}',
+    no_products: 'Aucun produit trouvé',
+    // Courses
+    shopping_title: 'Liste de courses', sv_list: '📝 Liste', sv_shop: '🛍️ Faire les courses',
+    btn_print: '🖨️ Imprimer', btn_copy: '📋 Copier',
+    all_in_stock: 'Tout est en stock !', all_in_stock_sub: "Aucun produit n'est en dessous de son seuil minimum.",
+    nothing_to_buy: 'Rien à acheter !', nothing_to_buy_sub: 'Tous les produits sont au-dessus de leur seuil.',
+    summary: '🛒 {n} article{s} à acheter', summary_urgent: ' — dont {n} urgent{s}',
+    aisle_undefined: '📦 Rayon non défini', anticipate: '⏰ À anticiper',
+    progress: '{done} / {total} article{s} traité{s}',
+    // Scan
+    scan_intro: "Scanne le code-barres d'un produit pour le retrouver et ajuster son stock en un geste. Le QR ci-dessous, lui, sert juste à ouvrir cette appli sur un autre téléphone.",
+    scan_btn: '📷 Scanner un code-barres', open_on_other: "Ouvrir l'appli sur un autre appareil",
+    qr_instructions: "Scanne ce QR avec un autre téléphone pour ouvrir cette même appli (l'inventaire est synchronisé via le cloud).",
+    scan_modal_title: '📷 Scanner un code-barres', scan_aim: 'Vise le code-barres du produit…',
+    scan_needs_https: '📷 Le scan nécessite https (ex. GitHub Pages)', scan_unavailable: '⚠️ Scanner indisponible (hors ligne ?)',
+    cam_error: 'Caméra inaccessible : {err}',
+    // Code inconnu
+    link_title: 'Code-barres inconnu', link_unknown: "Le code {code} n'est associé à aucun produit.",
+    link_to_existing: 'Associer à un produit existant', link_new: '+ Nouveau produit', link_assoc: '🔗 Associer',
+    link_has_code: ' (a déjà un code)', linked_ok: '🔗 Code associé à {name}',
+    // Modal produit
+    modal_add_title: 'Ajouter un produit', modal_edit_title: 'Modifier le produit',
+    f_name: 'Nom du produit *', f_name_ph: 'Ex: Pâtes spaghetti',
+    f_category: 'Catégorie', f_unit: 'Unité', f_unit_ph: 'kg, L, pcs...',
+    f_stock: 'Stock actuel', f_threshold: 'Seuil minimum', f_target: 'Quantité cible (à racheter)',
+    f_frequency: 'Fréquence de consommation', freq_none: '— Non définie —',
+    f_aisle: 'Rayon Coop', aisle_none: '— Non défini —',
+    f_notes: 'Notes (optionnel)', f_notes_ph: 'Marque préférée, variante...',
+    f_barcode: 'Code-barres (optionnel)', f_barcode_ph: 'EAN scanné ou saisi',
+    name_required: 'Le nom est obligatoire.',
+    btn_cancel: 'Annuler', btn_add: 'Ajouter', btn_save: 'Enregistrer',
+    delete_confirm: 'Supprimer "{name}" ?',
+    // Quick
+    quick_title: 'Mise à jour rapide', quick_current: 'Stock actuel',
+    quick_unit: '{unit} · Seuil: {threshold}',
+    // Buy
+    buy_title: 'Acheté', buy_text: 'Remettre à {n} {unit} ?', buy_confirm: '✅ Confirmer',
+    restocked_ok: '✅ {name} réapprovisionné',
+    // Fréquences
+    freq_quotidien: 'Quotidien', freq_hebdomadaire: 'Hebdomadaire', freq_mensuel: 'Mensuel', freq_trimestriel: 'Trimestriel',
+    // Catégories
+    cat_Alimentation: 'Alimentation', cat_Hygiène: 'Hygiène', 'cat_Ménager': 'Ménager',
+    cat_Pharmacie: 'Pharmacie', 'cat_Bébé': 'Bébé', cat_Autre: 'Autre',
+    // Temps
+    time_never: 'jamais', time_now: "à l'instant", time_minutes: 'il y a {n} min', time_hours: 'il y a {n}h',
+    time_yesterday: 'hier', time_days: 'il y a {n} jours', time_week: 'il y a 1 semaine',
+    time_weeks: 'il y a {n} semaines', time_month: 'il y a 1 mois', time_months: 'il y a {n} mois', time_over_year: "il y a plus d'un an",
+    // Export/import
+    export_done: '💾 {n} produits exportés', import_invalid: '⚠️ Fichier JSON invalide',
+    import_format: '⚠️ Format inattendu (tableau attendu)', import_done: '📂 {n} produit{s} importé{s}',
+    // Stats
+    stats_select_label: 'Produit', stats_adjust_btn: 'Ajuster les seuils',
+    stats_no_history: 'Pas encore de réapprovisionnement enregistré pour ce produit.',
+    stats_count: 'Racheté <strong>{n}</strong> fois en 6 mois', stats_last: 'Dernière fois par <strong>{by}</strong> · {time}',
+    stats_real_freq: 'Fréquence réelle : ~toutes les {n} semaines', stats_no_product: 'Aucun produit à analyser.',
+    months: ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'],
+    // Settings / onboarding
+    settings_name: 'Ton prénom', settings_lang: 'Langue', settings_saved: '✅ Paramètres enregistrés',
+    lang_choose: 'Choisis ta langue · Wähle deine Sprache',
+    name_welcome: 'Bienvenue ! 👋', name_question: 'Quel est ton prénom ?', name_go: "C'est parti",
+    // Cloud
+    connecting: 'Connexion au cloud…', synced_at: '☁️ Synchronisé à {time}',
+    sync_unavailable: '⚠️ Synchro indisponible (mode hors-ligne)', auth_failed: '⚠️ Authentification échouée — mode local',
+    local_mode: 'Mode local · {date}', updated_on: 'Mis à jour le {date}',
+    // Voice
+    voice_listening: '🎤 J\'écoute...', voice_unavailable: '🎤 Reconnaissance vocale indisponible',
+    voice_not_found: 'Aucun produit pour « {q} »',
+    // OFF
+    off_found: '✅ Produit trouvé sur Open Food Facts — vérifie les champs ci-dessous',
+    off_not_found: '❔ Code inconnu dans Open Food Facts — saisis le nom manuellement',
+    off_unavailable: 'Open Food Facts indisponible, saisis manuellement', off_credit: 'Données Open Food Facts',
+    copied_ok: 'Liste copiée dans le presse-papier !', nothing_to_buy_alert: 'Rien à acheter !',
+    print_title: 'Liste de courses — {date}', print_count: '{n} article{s} à acheter', print_nothing: 'Rien à acheter : tout est en stock. ✅',
+  },
+  de: {
+    doc_title: 'Hausinventar',
+    app_title: '🏠 Hausinventar',
+    loading: 'Lädt...',
+    btn_export: 'Export', btn_import: 'Import', btn_add_product: '+ Produkt',
+    export_title: 'Als JSON exportieren', import_title: 'JSON importieren',
+    settings_title: 'Einstellungen', voice_title: 'Sprachsuche',
+    tab_inventory: '📦 Inventar', tab_shopping: '🛒 Einkaufsliste', tab_scan: '📷 Scan', tab_stats: '📊 Statistik',
+    stat_to_buy: 'Nachkaufen', stat_low: 'Wenig Vorrat', stat_ok: 'OK',
+    search_ph: '🔍 Produkt suchen...', scan_title: 'Barcode scannen', all_categories: 'Alle Kategorien',
+    status_low: 'Nachkaufen', status_medium: 'Wenig Vorrat', status_ok: 'OK',
+    badge_soon: '⏰ Bald', badge_suggested: 'Vorschlag', badge_urgent: 'Dringend', badge_low: 'Wenig',
+    last_buy: '🕓 Letzter Kauf: {time}', edited_by: '✏️ Geändert von {name} · {time}',
+    no_products: 'Kein Produkt gefunden',
+    shopping_title: 'Einkaufsliste', sv_list: '📝 Liste', sv_shop: '🛍️ Einkaufen',
+    btn_print: '🖨️ Drucken', btn_copy: '📋 Kopieren',
+    all_in_stock: 'Alles auf Lager!', all_in_stock_sub: 'Kein Produkt unter dem Mindestbestand.',
+    nothing_to_buy: 'Nichts zu kaufen!', nothing_to_buy_sub: 'Alle Produkte sind über ihrem Schwellenwert.',
+    summary: '🛒 {n} Artikel zu kaufen', summary_urgent: ' — davon {n} dringend',
+    aisle_undefined: '📦 Keine Abteilung', anticipate: '⏰ Vorausplanen',
+    progress: '{done} / {total} Artikel erledigt',
+    scan_intro: 'Scanne den Barcode eines Produkts, um es zu finden und den Bestand mit einem Tipp anzupassen. Der QR-Code unten dient nur dazu, diese App auf einem anderen Handy zu öffnen.',
+    scan_btn: '📷 Barcode scannen', open_on_other: 'App auf einem anderen Gerät öffnen',
+    qr_instructions: 'Scanne diesen QR mit einem anderen Handy, um dieselbe App zu öffnen (das Inventar wird über die Cloud synchronisiert).',
+    scan_modal_title: '📷 Barcode scannen', scan_aim: 'Ziele auf den Barcode des Produkts…',
+    scan_needs_https: '📷 Scan benötigt https (z. B. GitHub Pages)', scan_unavailable: '⚠️ Scanner nicht verfügbar (offline?)',
+    cam_error: 'Kamera nicht erreichbar: {err}',
+    link_title: 'Unbekannter Barcode', link_unknown: 'Der Code {code} ist keinem Produkt zugeordnet.',
+    link_to_existing: 'Einem bestehenden Produkt zuordnen', link_new: '+ Neues Produkt', link_assoc: '🔗 Zuordnen',
+    link_has_code: ' (hat schon einen Code)', linked_ok: '🔗 Code zugeordnet zu {name}',
+    modal_add_title: 'Produkt hinzufügen', modal_edit_title: 'Produkt bearbeiten',
+    f_name: 'Produktname *', f_name_ph: 'z. B. Spaghetti',
+    f_category: 'Kategorie', f_unit: 'Einheit', f_unit_ph: 'kg, L, Stk...',
+    f_stock: 'Aktueller Bestand', f_threshold: 'Mindestbestand', f_target: 'Zielmenge (nachkaufen)',
+    f_frequency: 'Verbrauchshäufigkeit', freq_none: '— Nicht definiert —',
+    f_aisle: 'Coop-Abteilung', aisle_none: '— Nicht definiert —',
+    f_notes: 'Notizen (optional)', f_notes_ph: 'Lieblingsmarke, Variante...',
+    f_barcode: 'Barcode (optional)', f_barcode_ph: 'EAN gescannt oder eingegeben',
+    name_required: 'Der Name ist erforderlich.',
+    btn_cancel: 'Abbrechen', btn_add: 'Hinzufügen', btn_save: 'Speichern',
+    delete_confirm: '"{name}" löschen?',
+    quick_title: 'Schnellaktualisierung', quick_current: 'Aktueller Bestand',
+    quick_unit: '{unit} · Schwelle: {threshold}',
+    buy_title: 'Gekauft', buy_text: 'Auf {n} {unit} zurücksetzen?', buy_confirm: '✅ Bestätigen',
+    restocked_ok: '✅ {name} aufgefüllt',
+    freq_quotidien: 'Täglich', freq_hebdomadaire: 'Wöchentlich', freq_mensuel: 'Monatlich', freq_trimestriel: 'Vierteljährlich',
+    cat_Alimentation: 'Lebensmittel', cat_Hygiène: 'Hygiene', 'cat_Ménager': 'Haushalt',
+    cat_Pharmacie: 'Apotheke', 'cat_Bébé': 'Baby', cat_Autre: 'Sonstiges',
+    time_never: 'nie', time_now: 'gerade eben', time_minutes: 'vor {n} Min', time_hours: 'vor {n} Std',
+    time_yesterday: 'gestern', time_days: 'vor {n} Tagen', time_week: 'vor 1 Woche',
+    time_weeks: 'vor {n} Wochen', time_month: 'vor 1 Monat', time_months: 'vor {n} Monaten', time_over_year: 'vor über einem Jahr',
+    export_done: '💾 {n} Produkte exportiert', import_invalid: '⚠️ Ungültige JSON-Datei',
+    import_format: '⚠️ Unerwartetes Format (Array erwartet)', import_done: '📂 {n} Produkt(e) importiert',
+    stats_select_label: 'Produkt', stats_adjust_btn: 'Schwellen anpassen',
+    stats_no_history: 'Noch kein Nachkauf für dieses Produkt erfasst.',
+    stats_count: '<strong>{n}</strong>-mal in 6 Monaten nachgekauft', stats_last: 'Zuletzt von <strong>{by}</strong> · {time}',
+    stats_real_freq: 'Tatsächliche Häufigkeit: ~alle {n} Wochen', stats_no_product: 'Kein Produkt zum Auswerten.',
+    months: ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'],
+    settings_name: 'Dein Vorname', settings_lang: 'Sprache', settings_saved: '✅ Einstellungen gespeichert',
+    lang_choose: 'Wähle deine Sprache · Choisis ta langue',
+    name_welcome: 'Willkommen! 👋', name_question: 'Wie heisst du?', name_go: 'Los geht\'s',
+    connecting: 'Verbinde mit Cloud…', synced_at: '☁️ Synchronisiert um {time}',
+    sync_unavailable: '⚠️ Sync nicht verfügbar (offline)', auth_failed: '⚠️ Anmeldung fehlgeschlagen — lokaler Modus',
+    local_mode: 'Lokaler Modus · {date}', updated_on: 'Aktualisiert am {date}',
+    voice_listening: '🎤 Ich höre...', voice_unavailable: '🎤 Spracherkennung nicht verfügbar',
+    voice_not_found: 'Kein Produkt für « {q} »',
+    off_found: '✅ Produkt auf Open Food Facts gefunden — prüfe die Felder unten',
+    off_not_found: '❔ Code in Open Food Facts unbekannt — Name manuell eingeben',
+    off_unavailable: 'Open Food Facts nicht verfügbar, manuell eingeben', off_credit: 'Daten von Open Food Facts',
+    copied_ok: 'Liste in die Zwischenablage kopiert!', nothing_to_buy_alert: 'Nichts zu kaufen!',
+    print_title: 'Einkaufsliste — {date}', print_count: '{n} Artikel zu kaufen', print_nothing: 'Nichts zu kaufen: alles auf Lager. ✅',
+  }
+};
+
+// Étiquettes des rayons traduites (la valeur stockée reste le français canonique)
+const AISLE_I18N = {
+  '🥦 Fruits & Légumes':       { fr: '🥦 Fruits & Légumes',        de: '🥦 Obst & Gemüse' },
+  '🥩 Viande & Poisson':       { fr: '🥩 Viande & Poisson',        de: '🥩 Fleisch & Fisch' },
+  '🧀 Crèmerie & Charcuterie': { fr: '🧀 Crèmerie & Charcuterie',  de: '🧀 Molkerei & Wurstwaren' },
+  '🍞 Boulangerie & Pâtisserie':{ fr: '🍞 Boulangerie & Pâtisserie',de: '🍞 Bäckerei & Konditorei' },
+  '🥫 Épicerie sèche':         { fr: '🥫 Épicerie sèche',          de: '🥫 Trockenwaren' },
+  '🧃 Boissons':               { fr: '🧃 Boissons',                de: '🧃 Getränke' },
+  '🧊 Surgelés':               { fr: '🧊 Surgelés',                de: '🧊 Tiefkühl' },
+  '🫙 Conserves & Sauces':     { fr: '🫙 Conserves & Sauces',      de: '🫙 Konserven & Saucen' },
+  '🧴 Hygiène & Beauté':       { fr: '🧴 Hygiène & Beauté',        de: '🧴 Hygiene & Schönheit' },
+  '🧹 Entretien ménager':      { fr: '🧹 Entretien ménager',       de: '🧹 Haushaltsreinigung' },
+  '👶 Bébé':                   { fr: '👶 Bébé',                    de: '👶 Baby' },
+  '💊 Pharmacie':              { fr: '💊 Pharmacie',               de: '💊 Apotheke' },
+  '🐾 Animaux':                { fr: '🐾 Animaux',                 de: '🐾 Tiere' },
+  '📦 Autre':                  { fr: '📦 Autre',                   de: '📦 Sonstiges' },
+};
+
+let currentLang = localStorage.getItem('app-lang') || 'fr';
+let userName = localStorage.getItem('user-name') || null;
+
+// Récupère une chaîne traduite, avec interpolation {clé} et pluriel {s}
+function t(key, vars) {
+  let s = (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]);
+  if (s === undefined) s = TRANSLATIONS.fr[key];
+  if (s === undefined) return key;
+  if (vars) {
+    for (const k in vars) s = s.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]);
+    // pluriel simple : {s} → 's' si vars.n > 1 (ou vars.total > 1), sinon ''
+    const pluralN = vars.total !== undefined ? vars.total : vars.n;
+    s = s.replace(/\{s\}/g, (pluralN > 1) ? 's' : '');
+  } else {
+    s = s.replace(/\{s\}/g, '');
+  }
+  return s;
+}
+
+function aisleLabel(a) {
+  if (!a) return t('aisle_undefined');
+  const m = AISLE_I18N[a];
+  return m ? (m[currentLang] || m.fr) : a;
+}
+function freqLabel(f) { return f ? t('freq_' + f) : ''; }
+function catLabel(c) {
+  const k = 'cat_' + c;
+  const tr = (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][k]) || TRANSLATIONS.fr[k];
+  return tr || c;
+}
+
+// Applique les traductions à tous les éléments statiques marqués data-i18n*
+function applyTranslations() {
+  document.documentElement.lang = currentLang;
+  document.title = t('doc_title');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  // Options dynamiques (rayons, catégories, fréquences)
+  document.querySelectorAll('#f-aisle option[data-aisle]').forEach(o => o.textContent = aisleLabel(o.value));
+  document.querySelectorAll('#f-cat option[data-cat]').forEach(o => o.textContent = catLabel(o.value));
+  document.querySelectorAll('#f-frequency option[data-freq]').forEach(o => o.textContent = freqLabel(o.value));
+  // Boutons langue dans les paramètres
+  const frB = document.getElementById('lang-fr-btn'), deB = document.getElementById('lang-de-btn');
+  if (frB && deB) {
+    frB.className = 'btn ' + (currentLang === 'fr' ? 'btn-accent' : 'btn-outline');
+    deB.className = 'btn ' + (currentLang === 'de' ? 'btn-accent' : 'btn-outline');
+    frB.style.flex = deB.style.flex = '1'; frB.style.justifyContent = deB.style.justifyContent = 'center';
+  }
+}
+
+// ================================================================
+// DONNÉES — structure de chaque produit
+// ================================================================
+// id, name, category, aisle, unit, stock, threshold, target, notes,
+// updatedAt, frequency, lastRestocked, barcode
+// + lastEditedBy (feature #2), restockHistory[] (feature #4)
+
+let products = [];
+let editingId = null;
+let quickEditId = null;
+let currentTab = 'inventory';
+
+// Charge les données depuis le localStorage du navigateur
+function loadData() {
+  const raw = localStorage.getItem('inventaire-maison-v1');
+  if (raw) {
+    try { products = JSON.parse(raw); } catch(e) { products = []; }
+  } else {
+    products = [];
+  }
+  migrateProducts(); // migration douce : ajoute les nouveaux champs manquants
+}
+
+// Migration douce : normalise les champs nouveaux sans casser l'existant
+function migrateProducts() {
+  if (!Array.isArray(products)) { products = []; return; }
+  products.forEach(p => {
+    if (p.frequency === undefined) p.frequency = '';
+    if (p.barcode === undefined) p.barcode = '';
+    if (p.aisle === undefined) p.aisle = '';
+    if (p.lastEditedBy === undefined) p.lastEditedBy = '';        // feature #2
+    if (!Array.isArray(p.restockHistory)) p.restockHistory = [];  // feature #4
+    // lastRestocked reste optionnel : absent = "jamais"
+  });
+}
+
+// Marque le produit comme édité par l'utilisateur de cet appareil (feature #2)
+function stampEditor(p) {
+  p.lastEditedBy = userName || '?';
+  p.updatedAt = new Date().toISOString();
+}
+
+// Ajoute une entrée d'historique de réappro (feature #4), max 50 entrées
+function pushRestock(p, qty) {
+  if (!Array.isArray(p.restockHistory)) p.restockHistory = [];
+  p.restockHistory.push({ date: new Date().toISOString(), qty: qty, by: userName || '?' });
+  while (p.restockHistory.length > 50) p.restockHistory.shift();
+}
+
+// Sauvegarde les données dans le localStorage
+function saveData() {
+  localStorage.setItem('inventaire-maison-v1', JSON.stringify(products));
+  document.getElementById('last-update').textContent = t('updated_on', {
+    date: new Date().toLocaleDateString(localeOf(), {day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})
+  });
+}
+
+function localeOf() { return currentLang === 'de' ? 'de-DE' : 'fr-FR'; }
+
+// Produits de démonstration pré-remplis
+function defaultProducts() {
+  return [
+    { id: uid(), name: 'Pâtes spaghetti', category: 'Alimentation', aisle: '🥫 Épicerie sèche', unit: 'paquets', stock: 2, threshold: 2, target: 5, notes: '', updatedAt: new Date().toISOString() },
+    { id: uid(), name: 'Riz', category: 'Alimentation', aisle: '🥫 Épicerie sèche', unit: 'kg', stock: 1, threshold: 1, target: 3, notes: '', updatedAt: new Date().toISOString() },
+    { id: uid(), name: 'Huile d\'olive', category: 'Alimentation', aisle: '🥫 Épicerie sèche', unit: 'bouteilles', stock: 1, threshold: 1, target: 2, notes: '', updatedAt: new Date().toISOString() },
+    { id: uid(), name: 'Couches T4', category: 'Bébé', aisle: '👶 Bébé', unit: 'paquets', stock: 1, threshold: 2, target: 4, notes: 'Pampers ou Lidl', updatedAt: new Date().toISOString() },
+    { id: uid(), name: 'Lingettes bébé', category: 'Bébé', aisle: '👶 Bébé', unit: 'paquets', stock: 3, threshold: 2, target: 6, notes: '', updatedAt: new Date().toISOString() },
+    { id: uid(), name: 'Lessive liquide', category: 'Ménager', aisle: '🧹 Entretien ménager', unit: 'flacons', stock: 2, threshold: 1, target: 3, notes: '', updatedAt: new Date().toISOString() },
+    { id: uid(), name: 'Shampoing', category: 'Hygiène', aisle: '🧴 Hygiène & Beauté', unit: 'flacons', stock: 1, threshold: 1, target: 2, notes: '', updatedAt: new Date().toISOString() },
+    { id: uid(), name: 'Paracétamol', category: 'Pharmacie', aisle: '💊 Pharmacie', unit: 'boîtes', stock: 2, threshold: 1, target: 3, notes: '', updatedAt: new Date().toISOString() },
+  ];
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+// ================================================================
+// STATUT D'UN PRODUIT
+// ================================================================
+function getStatus(p) {
+  if (p.stock <= p.threshold) return 'low';
+  if (p.stock <= p.threshold * 1.5) return 'medium';
+  return 'ok';
+}
+
+// ================================================================
+// HELPERS — fréquence de conso & dates lisibles
+// ================================================================
+function freqDays(f) {
+  return { quotidien: 1, hebdomadaire: 7, mensuel: 30, trimestriel: 90 }[f] || null;
+}
+
+// Date lisible relative, traduite, précise sous 24h (feature #2.5)
+function relativeTime(iso) {
+  if (!iso) return t('time_never');
+  const then = new Date(iso);
+  if (isNaN(then.getTime())) return t('time_never');
+  const ms = Date.now() - then.getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return t('time_now');
+  if (mins < 60) return t('time_minutes', { n: mins });
+  const hours = Math.floor(ms / 3600000);
+  if (hours < 24) return t('time_hours', { n: hours });
+  const days = Math.floor(ms / 86400000);
+  if (days === 1) return t('time_yesterday');
+  if (days < 7) return t('time_days', { n: days });
+  if (days < 14) return t('time_week');
+  if (days < 30) return t('time_weeks', { n: Math.floor(days / 7) });
+  if (days < 60) return t('time_month');
+  if (days < 365) return t('time_months', { n: Math.floor(days / 30) });
+  return t('time_over_year');
+}
+
+// Prédit une rupture proche : lastRestocked + fréquence tombe dans moins de 7 jours
+function isDepletingSoon(p) {
+  const d = freqDays(p.frequency);
+  if (!d || !p.lastRestocked) return false;
+  const next = new Date(p.lastRestocked).getTime();
+  if (isNaN(next)) return false;
+  const daysLeft = (next + d * 86400000 - Date.now()) / 86400000;
+  return daysLeft < 7;
+}
+
+// Produit "à anticiper" : pas encore sous le seuil mais bientôt en rupture (feature #3)
+function isSuggested(p) {
+  return getStatus(p) === 'ok' && isDepletingSoon(p);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ================================================================
+// RENDU — onglet Inventaire
+// ================================================================
+function renderInventory() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const catFilter = document.getElementById('cat-filter').value;
+
+  let filtered = products.filter(p => {
+    const matchSearch = p.name.toLowerCase().includes(search) || (p.barcode || '').includes(search);
+    const matchCat = !catFilter || p.category === catFilter;
+    return matchSearch && matchCat;
+  });
+
+  filtered.sort((a, b) => {
+    const order = {low:0, medium:1, ok:2};
+    return order[getStatus(a)] - order[getStatus(b)] || a.name.localeCompare(b.name);
+  });
+
+  document.getElementById('stat-low').textContent = products.filter(p => getStatus(p) === 'low').length;
+  document.getElementById('stat-medium').textContent = products.filter(p => getStatus(p) === 'medium').length;
+  document.getElementById('stat-ok').textContent = products.filter(p => getStatus(p) === 'ok').length;
+
+  // Filtre catégorie (valeur = catégorie canonique, libellé traduit)
+  const cats = [...new Set(products.map(p => p.category))].sort();
+  const catSel = document.getElementById('cat-filter');
+  const currentCat = catSel.value;
+  catSel.innerHTML = '<option value="">' + escapeHtml(t('all_categories')) + '</option>';
+  cats.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = catLabel(c);
+    if (c === currentCat) o.selected = true;
+    catSel.appendChild(o);
+  });
+
+  const grid = document.getElementById('product-grid');
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="empty-list"><div class="emoji">📦</div><p>' + escapeHtml(t('no_products')) + '</p></div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => {
+    const status = getStatus(p);
+    const statusLabel = t('status_' + (status === 'medium' ? 'medium' : status));
+    const stockClass = status;
+    const soonBadge = isDepletingSoon(p) ? '<span class="status-badge badge-soon">' + t('badge_soon') + '</span>' : '';
+    const meta = escapeHtml(catLabel(p.category)) + (p.aisle ? ' · ' + escapeHtml(aisleLabel(p.aisle)) : '') + (p.notes ? ' · ' + escapeHtml(p.notes) : '');
+    const editorLine = p.lastEditedBy
+      ? '<div class="product-editor">' + t('edited_by', { name: escapeHtml(p.lastEditedBy), time: relativeTime(p.updatedAt) }) + '</div>'
+      : '';
+    return `
+      <div class="product-card status-${status}" data-id="${p.id}">
+        <div class="product-info">
+          <div class="product-name">${escapeHtml(p.name)}</div>
+          <div class="product-meta">${meta}</div>
+          <div class="product-restock">${t('last_buy', { time: relativeTime(p.lastRestocked) })}${p.frequency ? ' · ' + escapeHtml(freqLabel(p.frequency)) : ''}</div>
+          ${editorLine}
+        </div>
+        ${soonBadge}
+        <span class="status-badge badge-${status}">${statusLabel}</span>
+        <div class="stock-control">
+          <button class="stock-btn" onclick="adjustStock('${p.id}', -1)">−</button>
+          <div>
+            <div class="stock-value ${stockClass}">${p.stock}</div>
+            <div class="stock-unit">${escapeHtml(p.unit)}</div>
+          </div>
+          <button class="stock-btn" onclick="adjustStock('${p.id}', 1)">+</button>
+        </div>
+        <div class="product-actions">
+          <button class="icon-btn" onclick="openEditModal('${p.id}')">✏️</button>
+          <button class="icon-btn" onclick="deleteProduct('${p.id}')" style="color:var(--danger)">🗑️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ================================================================
+// RENDU — onglet Liste de courses (groupé par RAYON COOP)
+// ================================================================
+const AISLE_ORDER = [
+  '🥦 Fruits & Légumes',
+  '🥩 Viande & Poisson',
+  '🧀 Crèmerie & Charcuterie',
+  '🍞 Boulangerie & Pâtisserie',
+  '🥫 Épicerie sèche',
+  '🫙 Conserves & Sauces',
+  '🧃 Boissons',
+  '🧊 Surgelés',
+  '🧴 Hygiène & Beauté',
+  '🧹 Entretien ménager',
+  '👶 Bébé',
+  '💊 Pharmacie',
+  '🐾 Animaux',
+  '📦 Autre',
+  '',
+];
+
+function aisleIndex(aisle) {
+  const i = AISLE_ORDER.indexOf(aisle || '');
+  return i === -1 ? AISLE_ORDER.length : i;
+}
+
+// Construit le HTML d'une section groupée par rayon
+function groupByAisleHtml(list, itemFn) {
+  const byAisle = {};
+  list.forEach(p => {
+    const key = p.aisle || '';
+    if (!byAisle[key]) byAisle[key] = [];
+    byAisle[key].push(p);
+  });
+  const aisleKeys = Object.keys(byAisle).sort((a, b) => aisleIndex(a) - aisleIndex(b));
+  let html = '';
+  aisleKeys.forEach(aisle => {
+    const items = byAisle[aisle];
+    items.sort((a, b) => (getStatus(a) === 'low' ? 0 : 1) - (getStatus(b) === 'low' ? 0 : 1) || a.name.localeCompare(b.name));
+    const label = aisle ? aisleLabel(aisle) : t('aisle_undefined');
+    html += `<div class="shopping-section"><div class="shopping-section-title">${escapeHtml(label)}</div>${items.map(itemFn).join('')}</div>`;
+  });
+  return html;
+}
+
+function renderShopping() {
+  const toShop = products.filter(p => getStatus(p) !== 'ok');
+  const suggested = products.filter(p => isSuggested(p)); // feature #3
+  const container = document.getElementById('shopping-list-content');
+
+  if (toShop.length === 0 && suggested.length === 0) {
+    container.innerHTML = `
+      <div class="empty-list">
+        <div class="emoji">✅</div>
+        <p><strong>${t('all_in_stock')}</strong></p>
+        <p style="margin-top:6px">${t('all_in_stock_sub')}</p>
+      </div>`;
+    return;
+  }
+
+  let html = '';
+  if (toShop.length > 0) {
+    const urgentCount = toShop.filter(p => getStatus(p) === 'low').length;
+    const totalCount = toShop.length;
+    html += `<div style="background:var(--accent-light);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--accent);font-weight:600">
+      ${t('summary', { n: totalCount })}${urgentCount ? '<span style="color:var(--danger)">' + t('summary_urgent', { n: urgentCount }) + '</span>' : ''}
+    </div>`;
+    html += groupByAisleHtml(toShop, p => shoppingItem(p, getStatus(p) === 'low' ? 'urgent' : 'needed'));
+  }
+
+  // Section "À anticiper" (feature #3.4)
+  if (suggested.length > 0) {
+    html += `<div class="anticipate-section">
+      <div class="shopping-section-title">${t('anticipate')}</div>
+      ${groupByAisleHtml(suggested, p => shoppingItem(p, 'suggested'))}
+    </div>`;
+  }
+
+  container.innerHTML = html;
+
+  const checked = JSON.parse(localStorage.getItem('shopping-checked') || '[]');
+  checked.forEach(id => {
+    const cb = document.getElementById('cb-' + id);
+    if (cb) { cb.checked = true; cb.closest('.shopping-item').classList.add('checked'); }
+  });
+}
+
+function shoppingItem(p, cls) {
+  const need = Math.max(0, p.target - p.stock);
+  let badge = '';
+  if (cls === 'urgent') badge = '<span style="font-size:10px;background:var(--danger-light);color:var(--danger);padding:1px 6px;border-radius:10px;font-weight:700;margin-left:6px">' + t('badge_urgent').toUpperCase() + '</span>';
+  else if (cls === 'suggested') badge = '<span style="font-size:10px;background:var(--warn-light);color:var(--warn);padding:1px 6px;border-radius:10px;font-weight:700;margin-left:6px">' + t('badge_suggested') + '</span>';
+  return `
+    <div class="shopping-item ${cls}" id="si-${p.id}">
+      <input type="checkbox" id="cb-${p.id}" onchange="toggleCheck('${p.id}', this)">
+      <label for="cb-${p.id}">${escapeHtml(p.name)}${badge}${p.notes ? '<span style="color:var(--muted);font-size:12px;margin-left:4px">('+escapeHtml(p.notes)+')</span>' : ''}</label>
+      <span class="need-qty">${need > 0 ? '×' + need + ' ' + escapeHtml(p.unit) : escapeHtml(p.unit)}</span>
+    </div>`;
+}
+
+function toggleCheck(id, cb) {
+  const item = document.getElementById('si-' + id);
+  item.classList.toggle('checked', cb.checked);
+  const checked = JSON.parse(localStorage.getItem('shopping-checked') || '[]');
+  if (cb.checked) {
+    if (!checked.includes(id)) checked.push(id);
+  } else {
+    const i = checked.indexOf(id); if (i >= 0) checked.splice(i, 1);
+  }
+  localStorage.setItem('shopping-checked', JSON.stringify(checked));
+}
+
+function copyShopping() {
+  const toShop = products.filter(p => getStatus(p) !== 'ok');
+  if (toShop.length === 0) { alert(t('nothing_to_buy_alert')); return; }
+
+  const byAisle = {};
+  toShop.forEach(p => {
+    const key = p.aisle ? aisleLabel(p.aisle) : t('aisle_undefined');
+    if (!byAisle[key]) byAisle[key] = [];
+    byAisle[key].push(p);
+  });
+  const aisleKeys = Object.keys(byAisle).sort((a, b) => a.localeCompare(b));
+
+  let text = '🛒 ' + t('shopping_title').toUpperCase() + ' — ' + new Date().toLocaleDateString(localeOf()) + '\n\n';
+  Object.keys(byAisle).forEach(aisle => {
+    text += aisle.toUpperCase() + '\n';
+    byAisle[aisle]
+      .sort((a,b) => (getStatus(a)==='low'?0:1)-(getStatus(b)==='low'?0:1)||a.name.localeCompare(b.name))
+      .forEach(p => {
+        const need = Math.max(0, p.target - p.stock);
+        const flag = getStatus(p) === 'low' ? '🔴 ' : '🟡 ';
+        text += `${flag}${p.name}${need > 0 ? ' ×' + need + ' ' + p.unit : ''}\n`;
+      });
+    text += '\n';
+  });
+
+  navigator.clipboard.writeText(text).then(() => showToast(t('copied_ok')));
+}
+
+function printShopping() { window.print(); }
+
+// ================================================================
+// RENDU — onglet Scan & QR
+// ================================================================
+function renderQR() {
+  const url = window.location.href.split('#')[0];
+  document.getElementById('app-qr-url').textContent = url;
+  const box = document.getElementById('app-qr-display');
+  box.innerHTML = '';
+  new QRCode(box, {
+    text: url, width: 200, height: 200,
+    colorDark: '#1a1a18', colorLight: '#ffffff'
+  });
+}
+
+// ================================================================
+// SCANNER DE CODE-BARRES (html5-qrcode)
+// ================================================================
+let html5Qr = null;
+let scanRunning = false;
+let pendingBarcode = null;
+
+function openScanner() {
+  if (!window.isSecureContext) { showToast(t('scan_needs_https')); return; }
+  if (typeof Html5Qrcode === 'undefined') { showToast(t('scan_unavailable')); return; }
+
+  document.getElementById('scan-hint').textContent = t('scan_aim');
+  document.getElementById('scan-modal').classList.remove('hidden');
+
+  html5Qr = new Html5Qrcode('reader');
+  scanRunning = true;
+  html5Qr.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 280, height: 160 } },
+    decodedText => handleScanResult(decodedText),
+    () => {}
+  ).catch(err => {
+    scanRunning = false;
+    document.getElementById('scan-hint').textContent = t('cam_error', { err: err });
+  });
+}
+
+function stopScanIfRunning() {
+  if (html5Qr && scanRunning) {
+    scanRunning = false;
+    html5Qr.stop().then(() => html5Qr.clear()).catch(() => {});
+  }
+}
+
+function closeScanner() {
+  document.getElementById('scan-modal').classList.add('hidden');
+  stopScanIfRunning();
+}
+
+function handleScanResult(code) {
+  stopScanIfRunning();
+  document.getElementById('scan-modal').classList.add('hidden');
+  const p = products.find(x => (x.barcode || '') === code);
+  if (p) {
+    showToast('✅ ' + p.name);
+    openQuickModal(p.id);
+  } else {
+    openLinkModal(code);
+  }
+}
+
+function openLinkModal(code) {
+  pendingBarcode = code;
+  document.getElementById('link-text').innerHTML = t('link_unknown', { code: '<strong>' + escapeHtml(code) + '</strong>' });
+  const sel = document.getElementById('link-select');
+  sel.innerHTML = products.slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(p => `<option value="${p.id}">${escapeHtml(p.name)}${p.barcode ? t('link_has_code') : ''}</option>`)
+    .join('');
+  document.getElementById('link-modal').classList.remove('hidden');
+}
+
+function closeLinkModal() {
+  document.getElementById('link-modal').classList.add('hidden');
+  pendingBarcode = null;
+}
+
+function linkToExisting() {
+  const id = document.getElementById('link-select').value;
+  const p = products.find(x => x.id === id);
+  if (p && pendingBarcode) {
+    p.barcode = pendingBarcode;
+    stampEditor(p); // feature #2
+    saveData();
+    pushProduct(p);
+    renderInventory();
+    showToast(t('linked_ok', { name: p.name }));
+  }
+  closeLinkModal();
+}
+
+function createFromScan() {
+  const code = pendingBarcode;
+  closeLinkModal();
+  openAddModal();
+  document.getElementById('f-barcode').value = code || '';
+  offBarcodeLookup(); // feature #7 : lookup auto sur le code scanné
+}
+
+function checkHash() {
+  const hash = window.location.hash;
+  if (hash.startsWith('#quick:')) {
+    const id = hash.slice(7);
+    openQuickModal(id);
+    history.replaceState(null, '', window.location.pathname);
+  }
+}
+
+// ================================================================
+// MISE À JOUR RAPIDE
+// ================================================================
+let quickCurrentStock = 0;
+let quickPrevStock = 0;
+
+function openQuickModal(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  quickEditId = id;
+  quickCurrentStock = p.stock;
+  quickPrevStock = p.stock;
+  document.getElementById('quick-modal-title').textContent = '📦 ' + p.name;
+  document.getElementById('quick-stock-display').textContent = quickCurrentStock;
+  document.getElementById('quick-unit-display').textContent = t('quick_unit', { unit: p.unit, threshold: p.threshold });
+  document.getElementById('quick-modal').classList.remove('hidden');
+}
+
+function quickAdjust(delta) {
+  quickCurrentStock = Math.max(0, quickCurrentStock + delta);
+  document.getElementById('quick-stock-display').textContent = quickCurrentStock;
+}
+
+function saveQuickUpdate() {
+  const p = products.find(x => x.id === quickEditId);
+  if (!p) return;
+  const increase = quickCurrentStock - quickPrevStock;
+  p.stock = quickCurrentStock;
+  stampEditor(p); // feature #2
+  if (increase > 0) {                 // feature #4 : le stock augmente → réappro
+    p.lastRestocked = new Date().toISOString();
+    pushRestock(p, increase);
+  }
+  saveData();
+  pushProduct(p);
+  renderInventory();
+  document.getElementById('quick-modal').classList.add('hidden');
+}
+
+// ================================================================
+// AJUSTEMENT DU STOCK (+1/-1) depuis les boutons de la carte
+// ================================================================
+function adjustStock(id, delta) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  p.stock = Math.max(0, p.stock + delta);
+  stampEditor(p); // feature #2
+  saveData();
+  pushProduct(p);
+  renderInventory();
+}
+
+// ================================================================
+// MODAL AJOUT/MODIFICATION
+// ================================================================
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = t('modal_add_title');
+  document.getElementById('modal-save-btn').textContent = t('btn_add');
+  ['f-name','f-notes','f-barcode'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-cat').value = 'Alimentation';
+  document.getElementById('f-aisle').value = '';
+  document.getElementById('f-unit').value = 'pcs';
+  document.getElementById('f-stock').value = '1';
+  document.getElementById('f-threshold').value = '1';
+  document.getElementById('f-target').value = '3';
+  document.getElementById('f-frequency').value = '';
+  offReset();
+  document.getElementById('product-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('f-name').focus(), 100);
+}
+
+function openEditModal(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = t('modal_edit_title');
+  document.getElementById('modal-save-btn').textContent = t('btn_save');
+  document.getElementById('f-name').value = p.name;
+  document.getElementById('f-cat').value = p.category;
+  document.getElementById('f-aisle').value = p.aisle || '';
+  document.getElementById('f-unit').value = p.unit;
+  document.getElementById('f-stock').value = p.stock;
+  document.getElementById('f-threshold').value = p.threshold;
+  document.getElementById('f-target').value = p.target;
+  document.getElementById('f-frequency').value = p.frequency || '';
+  document.getElementById('f-notes').value = p.notes || '';
+  document.getElementById('f-barcode').value = p.barcode || '';
+  offReset();
+  document.getElementById('product-modal').classList.remove('hidden');
+}
+
+function saveProduct() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert(t('name_required')); return; }
+
+  const data = {
+    name,
+    category: document.getElementById('f-cat').value,
+    aisle: document.getElementById('f-aisle').value,
+    unit: document.getElementById('f-unit').value.trim() || 'pcs',
+    stock: parseInt(document.getElementById('f-stock').value) || 0,
+    threshold: parseInt(document.getElementById('f-threshold').value) || 1,
+    target: parseInt(document.getElementById('f-target').value) || 3,
+    frequency: document.getElementById('f-frequency').value,
+    barcode: document.getElementById('f-barcode').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+    lastEditedBy: userName || '?',         // feature #2
+    updatedAt: new Date().toISOString()
+  };
+
+  let saved;
+  if (editingId) {
+    const idx = products.findIndex(x => x.id === editingId);
+    products[idx] = { ...products[idx], ...data };
+    saved = products[idx];
+  } else {
+    saved = { id: uid(), restockHistory: [], ...data };
+    products.push(saved);
+  }
+
+  saveData();
+  pushProduct(saved);
+  closeModal();
+  renderInventory();
+}
+
+function deleteProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm(t('delete_confirm', { name: p.name }))) return;
+  products = products.filter(x => x.id !== id);
+  saveData();
+  removeProductRemote(id);
+  renderInventory();
+}
+
+function closeModal() {
+  document.getElementById('product-modal').classList.add('hidden');
+  editingId = null;
+  offReset();
+}
+
+// ================================================================
+// NAVIGATION PAR ONGLETS
+// ================================================================
+const TAB_LIST = ['inventory','shopping','qr','stats'];
+function switchTab(tab) {
+  currentTab = tab;
+  TAB_LIST.forEach(t2 => {
+    document.getElementById('tab-' + t2).style.display = t2 === tab ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', TAB_LIST[i] === tab);
+  });
+  updateMicFloat();
+  if (tab === 'shopping') setShoppingView(shoppingView);
+  if (tab === 'qr') renderQR();
+  if (tab === 'stats') renderStats();
+}
+
+// Ferme les modals en cliquant dehors
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) {
+      // Les modales d'onboarding ne se ferment pas au clic extérieur
+      if (overlay.id === 'lang-modal' || overlay.id === 'name-modal') return;
+      overlay.classList.add('hidden');
+      stopScanIfRunning();
+    }
+  });
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay').forEach(m => {
+      if (m.id === 'lang-modal' || m.id === 'name-modal') return;
+      m.classList.add('hidden');
+    });
+    closeOffDropdown();
+    stopScanIfRunning();
+  }
+});
+
+// ================================================================
+// TOAST
+// ================================================================
+let toastTimer = null;
+function showToast(msg) {
+  const t2 = document.getElementById('toast');
+  t2.textContent = msg;
+  t2.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t2.classList.remove('show'), 2000);
+}
+
+// ================================================================
+// EXPORT / IMPORT JSON
+// ================================================================
+function exportData() {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([JSON.stringify(products, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'inventaire-' + dateStr + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(t('export_done', { n: products.length }));
+}
+
+function triggerImport() {
+  document.getElementById('import-file').click();
+}
+
+function handleImportFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let imported;
+    try {
+      imported = JSON.parse(e.target.result);
+    } catch (err) {
+      showToast(t('import_invalid'));
+      input.value = '';
+      return;
+    }
+    if (!Array.isArray(imported)) {
+      showToast(t('import_format'));
+      input.value = '';
+      return;
+    }
+
+    let count = 0;
+    const touched = [];
+    imported.forEach(raw => {
+      if (!raw || typeof raw !== 'object' || !raw.name) return;
+      const np = normalizeImported(raw);
+      const existing = np.id ? products.find(p => p.id === np.id) : null;
+      if (existing) {
+        Object.assign(existing, np);
+        touched.push(existing);
+      } else {
+        if (!np.id) np.id = uid();
+        products.push(np);
+        touched.push(np);
+      }
+      count++;
+    });
+
+    saveData();
+    pushMany(touched);
+    renderInventory();
+    if (currentTab === 'shopping') setShoppingView(shoppingView);
+    showToast(t('import_done', { n: count }));
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function normalizeImported(raw) {
+  const num = (v, def) => (Number.isFinite(+v) ? +v : def);
+  return {
+    id: raw.id,
+    name: String(raw.name),
+    category: raw.category || 'Autre',
+    aisle: raw.aisle || '',
+    unit: raw.unit || 'pcs',
+    stock: num(raw.stock, 0),
+    threshold: num(raw.threshold, 1),
+    target: num(raw.target, 3),
+    frequency: raw.frequency || '',
+    barcode: raw.barcode || '',
+    notes: raw.notes || '',
+    lastEditedBy: raw.lastEditedBy || '',
+    restockHistory: Array.isArray(raw.restockHistory) ? raw.restockHistory : [],
+    lastRestocked: raw.lastRestocked || undefined,
+    updatedAt: raw.updatedAt || new Date().toISOString()
+  };
+}
+
+// ================================================================
+// MODE "FAIRE LES COURSES"
+// ================================================================
+let shoppingView = 'list';
+let shopSnapshot = [];
+let shopDone = new Set();
+
+function setShoppingView(view) {
+  shoppingView = view;
+  document.getElementById('shopping-list-view').style.display = view === 'list' ? '' : 'none';
+  document.getElementById('shopping-mode-view').style.display = view === 'shop' ? '' : 'none';
+  document.getElementById('sv-list-btn').className = 'btn btn-sm ' + (view === 'list' ? 'btn-accent' : 'btn-outline');
+  document.getElementById('sv-shop-btn').className = 'btn btn-sm ' + (view === 'shop' ? 'btn-accent' : 'btn-outline');
+  if (view === 'list') renderShopping();
+  if (view === 'shop') enterShoppingMode();
+  updateMicFloat();
+}
+
+// Entre dans le mode courses : fige la liste (à acheter + à anticiper, feature #3.1)
+function enterShoppingMode() {
+  const toBuy = products.filter(p => getStatus(p) !== 'ok').map(p => p.id);
+  const suggested = products.filter(p => isSuggested(p)).map(p => p.id);
+  shopSnapshot = [...toBuy, ...suggested];
+  shopDone = new Set();
+  renderShoppingMode();
+}
+
+function renderShoppingMode() {
+  const container = document.getElementById('shopping-mode-content');
+  const items = shopSnapshot.map(id => products.find(p => p.id === id)).filter(Boolean);
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="empty-list">
+        <div class="emoji">✅</div>
+        <p><strong>${t('nothing_to_buy')}</strong></p>
+        <p style="margin-top:6px">${t('nothing_to_buy_sub')}</p>
+      </div>`;
+    return;
+  }
+
+  const total = items.length;
+  const done = items.filter(p => shopDone.has(p.id)).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+
+  // Sépare réguliers / suggérés (figés à l'entrée)
+  const suggestedIds = new Set(products.filter(p => isSuggested(p)).map(p => p.id));
+  const regular = items.filter(p => !suggestedIds.has(p.id) || shopDone.has(p.id));
+  const suggested = items.filter(p => suggestedIds.has(p.id) && !shopDone.has(p.id));
+
+  let html = `
+    <div class="progress-wrap">
+      <div class="progress-label">${t('progress', { done: done, total: total })}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+
+  html += renderShopCardsByAisle(regular, suggestedIds);
+
+  if (suggested.length > 0) {
+    html += `<div class="anticipate-section"><div class="shopping-section-title">${t('anticipate')}</div>`;
+    html += renderShopCardsFlat(suggested, suggestedIds);
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function renderShopCardsByAisle(items, suggestedIds) {
+  if (items.length === 0) return '';
+  const byAisle = {};
+  items.forEach(p => { const k = p.aisle || ''; (byAisle[k] = byAisle[k] || []).push(p); });
+  const keys = Object.keys(byAisle).sort((a, b) => aisleIndex(a) - aisleIndex(b));
+  let html = '';
+  keys.forEach(aisle => {
+    const label = aisle ? aisleLabel(aisle) : t('aisle_undefined');
+    byAisle[aisle].sort((a, b) => (getStatus(a) === 'low' ? 0 : 1) - (getStatus(b) === 'low' ? 0 : 1) || a.name.localeCompare(b.name));
+    html += `<div class="shopping-section"><div class="shopping-section-title">${escapeHtml(label)}</div>`;
+    html += renderShopCardsFlat(byAisle[aisle], suggestedIds);
+    html += '</div>';
+  });
+  return html;
+}
+
+function renderShopCardsFlat(items, suggestedIds) {
+  return items.map(p => {
+    const isDone = shopDone.has(p.id);
+    const isSug = suggestedIds.has(p.id);
+    const st = getStatus(p);
+    let cls = isDone ? 'done' : (isSug ? 'suggested' : (st === 'low' ? 'urgent' : 'needed'));
+    let badge = '';
+    if (!isDone) {
+      if (isSug) badge = '<span class="status-badge badge-suggested">' + t('badge_suggested') + '</span>';
+      else if (st === 'low') badge = '<span class="status-badge badge-low">' + t('badge_urgent') + '</span>';
+      else if (st === 'medium') badge = '<span class="status-badge badge-medium">' + t('badge_low') + '</span>';
+    }
+    return `
+      <div class="shop-mode-card ${cls}" id="sm-${p.id}" data-name="${escapeHtml(p.name.toLowerCase())}">
+        <div class="sm-info">
+          <div class="sm-name">${escapeHtml(p.name)} ${badge}</div>
+          <div class="sm-qty">${p.stock} → <strong>${p.target}</strong> ${escapeHtml(p.unit)}</div>
+        </div>
+        <button class="btn-buy" onclick="openBuyModal('${p.id}')">${isDone ? '✓' : '✅'} ${isDone ? '' : t('buy_title')}</button>
+      </div>`;
+  }).join('');
+}
+
+let buyingId = null;
+function openBuyModal(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  buyingId = id;
+  document.getElementById('buy-modal-title').textContent = '🛒 ' + p.name;
+  document.getElementById('buy-modal-text').textContent = t('buy_text', { n: p.target, unit: p.unit });
+  document.getElementById('buy-modal').classList.remove('hidden');
+}
+
+// Confirme l'achat : stock = target, lastRestocked, historique (feature #4)
+function confirmBuy() {
+  const p = products.find(x => x.id === buyingId);
+  if (!p) return;
+  p.stock = p.target;
+  p.lastRestocked = new Date().toISOString();
+  stampEditor(p);            // feature #2
+  pushRestock(p, p.target);  // feature #4
+  shopDone.add(p.id);
+  saveData();
+  pushProduct(p);
+  document.getElementById('buy-modal').classList.add('hidden');
+  renderShoppingMode();
+  renderInventory();
+  showToast(t('restocked_ok', { name: p.name }));
+}
+
+// ================================================================
+// IMPRESSION
+// ================================================================
+function buildPrintArea() {
+  const area = document.getElementById('print-area');
+  const toShop = products.filter(p => getStatus(p) !== 'ok');
+  const dateStr = new Date().toLocaleDateString(localeOf(), {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+
+  if (toShop.length === 0) {
+    area.innerHTML = `<div class="print-title">${t('print_title', { date: dateStr })}</div>
+      <p>${t('print_nothing')}</p>`;
+    return;
+  }
+
+  const byAisle = {};
+  toShop.forEach(p => {
+    const key = p.aisle ? aisleLabel(p.aisle) : t('aisle_undefined');
+    if (!byAisle[key]) byAisle[key] = [];
+    byAisle[key].push(p);
+  });
+  const aisleKeys = Object.keys(byAisle);
+
+  let html = `<div class="print-title">${t('print_title', { date: dateStr })}</div>`;
+  html += `<div class="print-date">${t('print_count', { n: toShop.length })}</div>`;
+  html += '<div class="print-grid">';
+  aisleKeys.forEach(aisle => {
+    html += `<div class="print-section"><div class="print-aisle">${escapeHtml(aisle)}</div>`;
+    byAisle[aisle]
+      .sort((a, b) => (getStatus(a) === 'low' ? 0 : 1) - (getStatus(b) === 'low' ? 0 : 1) || a.name.localeCompare(b.name))
+      .forEach(p => {
+        const need = Math.max(0, p.target - p.stock);
+        html += `<div class="print-item"><span>${escapeHtml(p.name)}${need > 0 ? ' <span class="print-qty">×' + need + ' ' + escapeHtml(p.unit) + '</span>' : ''}</span></div>`;
+      });
+    html += '</div>';
+  });
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+window.addEventListener('beforeprint', buildPrintArea);
+
+// ================================================================
+// STATISTIQUES DE CONSOMMATION (feature #4)
+// ================================================================
+let statsSelectedId = null;
+
+function renderStats() {
+  const sel = document.getElementById('stats-select');
+  const sorted = products.slice().sort((a, b) => a.name.localeCompare(b.name));
+  const prev = sel.value;
+  sel.innerHTML = sorted.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  if (sorted.find(p => p.id === prev)) sel.value = prev;
+  statsSelectedId = sel.value || (sorted[0] && sorted[0].id) || null;
+  if (statsSelectedId) sel.value = statsSelectedId;
+
+  const info = document.getElementById('stats-info');
+  const canvas = document.getElementById('stats-canvas');
+  const p = products.find(x => x.id === statsSelectedId);
+
+  if (!p) {
+    info.textContent = t('stats_no_product');
+    clearCanvas(canvas);
+    return;
+  }
+
+  const history = (p.restockHistory || []).filter(h => h && h.date);
+  drawStatsChart(canvas, history);
+
+  // Période : 6 derniers mois
+  const sixMonthsAgo = Date.now() - 182 * 86400000;
+  const recent = history.filter(h => new Date(h.date).getTime() >= sixMonthsAgo);
+  if (history.length === 0) {
+    info.innerHTML = t('stats_no_history');
+    return;
+  }
+  const last = history[history.length - 1];
+  let html = t('stats_count', { n: recent.length }) + '<br>';
+  html += t('stats_last', { by: escapeHtml(last.by || '?'), time: relativeTime(last.date) });
+  // Fréquence réelle = intervalle moyen entre réappros (en semaines)
+  if (history.length >= 2) {
+    const dates = history.map(h => new Date(h.date).getTime()).sort((a, b) => a - b);
+    let sum = 0;
+    for (let i = 1; i < dates.length; i++) sum += dates[i] - dates[i - 1];
+    const avgDays = (sum / (dates.length - 1)) / 86400000;
+    const weeks = Math.max(1, Math.round(avgDays / 7));
+    html += '<br>' + t('stats_real_freq', { n: weeks });
+  }
+  info.innerHTML = html;
+}
+
+function clearCanvas(canvas) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// Graphique en barres : 6 derniers mois, axe Y = nb de réappros
+function drawStatsChart(canvas, history) {
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 320;
+  const cssH = 180;
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  // Buckets des 6 derniers mois
+  const now = new Date();
+  const buckets = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    buckets.push({ year: d.getFullYear(), month: d.getMonth(), count: 0 });
+  }
+  history.forEach(h => {
+    const d = new Date(h.date);
+    const b = buckets.find(b => b.year === d.getFullYear() && b.month === d.getMonth());
+    if (b) b.count++;
+  });
+
+  const months = TRANSLATIONS[currentLang].months || TRANSLATIONS.fr.months;
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3d6b4f';
+  const muted = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#8a867e';
+
+  const padL = 24, padB = 22, padT = 10, padR = 8;
+  const chartW = cssW - padL - padR;
+  const chartH = cssH - padB - padT;
+  const maxCount = Math.max(1, ...buckets.map(b => b.count));
+  const barW = chartW / buckets.length * 0.6;
+  const gap = chartW / buckets.length;
+
+  // Axe Y (graduations entières)
+  ctx.strokeStyle = '#e2ddd6'; ctx.fillStyle = muted; ctx.font = '10px system-ui'; ctx.textAlign = 'right';
+  const steps = Math.min(maxCount, 4);
+  for (let s = 0; s <= steps; s++) {
+    const val = Math.round(maxCount * s / steps);
+    const y = padT + chartH - (val / maxCount) * chartH;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(cssW - padR, y); ctx.stroke();
+    ctx.fillText(val, padL - 4, y + 3);
+  }
+
+  // Barres + labels mois
+  buckets.forEach((b, i) => {
+    const x = padL + gap * i + (gap - barW) / 2;
+    const h = (b.count / maxCount) * chartH;
+    const y = padT + chartH - h;
+    ctx.fillStyle = accent;
+    ctx.fillRect(x, y, barW, h);
+    if (b.count > 0) {
+      ctx.fillStyle = accent; ctx.textAlign = 'center'; ctx.font = '700 11px system-ui';
+      ctx.fillText(b.count, x + barW / 2, y - 3);
+    }
+    ctx.fillStyle = muted; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText(months[b.month], x + barW / 2, cssH - 6);
+  });
+}
+
+function adjustThresholdsFromStats() {
+  if (statsSelectedId) openEditModal(statsSelectedId);
+}
+
+// ================================================================
+// RECHERCHE VOCALE (Web Speech API) — feature #5
+// ================================================================
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let voiceTarget = null; // 'inventory' | 'shop'
+
+function initSpeech() {
+  if (!SpeechRec) {
+    document.getElementById('mic-inventory').style.display = 'none';
+    document.getElementById('mic-float').classList.remove('visible');
+    return;
+  }
+  document.getElementById('mic-inventory').style.display = '';
+  bindMic(document.getElementById('mic-inventory'), 'inventory');
+  bindMic(document.getElementById('mic-float'), 'shop');
+}
+
+function bindMic(btn, target) {
+  // Appui maintenu : démarre / relâche : arrête (feature #5.2)
+  const start = (e) => { e.preventDefault(); startVoice(target, btn); };
+  const stop = (e) => { e.preventDefault(); stopVoice(); };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', stop);
+  btn.addEventListener('pointerleave', stop);
+  btn.addEventListener('pointercancel', stop);
+}
+
+function startVoice(target, btn) {
+  if (!SpeechRec || recognition) return;
+  voiceTarget = target;
+  recognition = new SpeechRec();
+  recognition.lang = currentLang === 'de' ? 'de-DE' : 'fr-FR';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  btn.classList.add('listening');
+
+  if (target === 'inventory') {
+    const inp = document.getElementById('search-input');
+    inp.dataset.prevPh = inp.placeholder;
+    inp.placeholder = t('voice_listening');
+  }
+
+  recognition.onresult = (ev) => {
+    const text = (ev.results[0][0].transcript || '').trim();
+    handleVoiceResult(text);
+  };
+  recognition.onerror = () => {};
+  recognition.onend = () => { cleanupVoice(btn); };
+
+  try { recognition.start(); } catch (e) { cleanupVoice(btn); }
+}
+
+function stopVoice() {
+  if (recognition) { try { recognition.stop(); } catch (e) {} }
+}
+
+function cleanupVoice(btn) {
+  recognition = null;
+  document.querySelectorAll('.mic-btn, .mic-float').forEach(b => b.classList.remove('listening'));
+  const inp = document.getElementById('search-input');
+  if (inp.dataset.prevPh !== undefined) { inp.placeholder = inp.dataset.prevPh; delete inp.dataset.prevPh; }
+}
+
+function handleVoiceResult(text) {
+  if (!text) return;
+  if (voiceTarget === 'inventory') {
+    document.getElementById('search-input').value = text;
+    renderInventory();
+  } else if (voiceTarget === 'shop') {
+    voiceHighlightShop(text);
+  }
+}
+
+// Surligne le produit dicté dans la liste "Faire les courses" (feature #5.5)
+function voiceHighlightShop(text) {
+  const q = text.toLowerCase();
+  const cards = [...document.querySelectorAll('#shopping-mode-content .shop-mode-card')];
+  let hit = cards.find(c => (c.dataset.name || '').includes(q))
+        || cards.find(c => q.split(/\s+/).some(w => w.length > 2 && (c.dataset.name || '').includes(w)));
+  if (hit) {
+    cards.forEach(c => c.classList.remove('voice-hit'));
+    hit.classList.add('voice-hit');
+    hit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => hit.classList.remove('voice-hit'), 2500);
+  } else {
+    showToast(t('voice_not_found', { q: text }));
+  }
+}
+
+// Affiche/masque le micro flottant selon l'onglet/vue
+function updateMicFloat() {
+  const f = document.getElementById('mic-float');
+  const show = SpeechRec && currentTab === 'shopping' && shoppingView === 'shop';
+  f.classList.toggle('visible', !!show);
+}
+
+// ================================================================
+// OPEN FOOD FACTS — lookup code-barres + autocomplete nom (feature #7)
+// ================================================================
+const OFF_TO_AISLE = {
+  'en:fruits':            '🥦 Fruits & Légumes',
+  'en:vegetables':        '🥦 Fruits & Légumes',
+  'en:fresh-meats':       '🥩 Viande & Poisson',
+  'en:fish':              '🥩 Viande & Poisson',
+  'en:seafood':           '🥩 Viande & Poisson',
+  'en:dairy':             '🧀 Crèmerie & Charcuterie',
+  'en:cheeses':           '🧀 Crèmerie & Charcuterie',
+  'en:charcuterie':       '🧀 Crèmerie & Charcuterie',
+  'en:breads':            '🍞 Boulangerie & Pâtisserie',
+  'en:pastries':          '🍞 Boulangerie & Pâtisserie',
+  'en:pastas':            '🥫 Épicerie sèche',
+  'en:rice':              '🥫 Épicerie sèche',
+  'en:cereals':           '🥫 Épicerie sèche',
+  'en:flours':            '🥫 Épicerie sèche',
+  'en:beverages':         '🧃 Boissons',
+  'en:juices':            '🧃 Boissons',
+  'en:waters':            '🧃 Boissons',
+  'en:frozen-foods':      '🧊 Surgelés',
+  'en:canned-foods':      '🫙 Conserves & Sauces',
+  'en:sauces':            '🫙 Conserves & Sauces',
+  'en:hygiene':           '🧴 Hygiène & Beauté',
+  'en:cosmetics':         '🧴 Hygiène & Beauté',
+  'en:cleaning-products': '🧹 Entretien ménager',
+  'en:baby-foods':        '👶 Bébé',
+  'en:dietary-supplements':'💊 Pharmacie',
+  'en:pet-foods':         '🐾 Animaux',
+};
+
+function guessAisle(categoryTags) {
+  if (!Array.isArray(categoryTags)) return '';
+  for (const tag of categoryTags) {
+    if (OFF_TO_AISLE[tag]) return OFF_TO_AISLE[tag];
+  }
+  return '';
+}
+
+const OFF_HEADERS = { 'User-Agent': 'Inventaire-Maison/1.0' };
+let offNameTimer = null;
+let offFromSelection = false; // évite la boucle après sélection dans le dropdown
+
+function offReset() {
+  setOffBanner('', '');
+  document.getElementById('off-spinner').classList.remove('show');
+  document.getElementById('off-credit').classList.remove('show');
+  closeOffDropdown();
+}
+
+function setOffBanner(msg, type) {
+  const b = document.getElementById('off-banner');
+  if (!msg) { b.className = 'off-banner'; b.textContent = ''; return; }
+  b.textContent = msg;
+  b.className = 'off-banner show ' + (type || 'ok');
+}
+
+function showOffCredit() { document.getElementById('off-credit').classList.add('show'); }
+
+// A) Lookup par code-barres
+function offBarcodeLookup() {
+  const barcode = document.getElementById('f-barcode').value.trim();
+  const nameEmpty = !document.getElementById('f-name').value.trim();
+  if (!barcode || !nameEmpty) return;          // déclenché seulement si nom vide
+  if (!navigator.onLine) return;               // hors-ligne : désactivé silencieusement
+  if (!/^\d{6,}$/.test(barcode)) return;       // pas un EAN plausible
+
+  const spinner = document.getElementById('off-spinner');
+  spinner.classList.add('show');
+  setOffBanner('', '');
+
+  const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json`
+    + `?fields=product_name,product_name_fr,product_name_de,brands,categories_tags,stores_tags,quantity,image_front_small_url`
+    + `&lc=${currentLang}`;
+
+  fetch(url, { headers: OFF_HEADERS })
+    .then(r => r.json())
+    .then(data => {
+      spinner.classList.remove('show');
+      if (data && data.status === 1 && data.product) {
+        const pr = data.product;
+        const name = (currentLang === 'de' ? pr.product_name_de : pr.product_name_fr)
+          || pr.product_name || pr.brands || '';
+        if (name && !document.getElementById('f-name').value.trim()) document.getElementById('f-name').value = name;
+        if (pr.brands && pr.brands !== name && !document.getElementById('f-notes').value.trim()) {
+          document.getElementById('f-notes').value = pr.brands;
+        }
+        const aisle = guessAisle(pr.categories_tags);
+        if (aisle && !document.getElementById('f-aisle').value) document.getElementById('f-aisle').value = aisle;
+        setOffBanner(t('off_found'), 'ok');
+        showOffCredit();
+      } else {
+        setOffBanner(t('off_not_found'), 'warn');
+      }
+    })
+    .catch(() => {
+      spinner.classList.remove('show');
+      setOffBanner(t('off_unavailable'), 'warn');
+    });
+}
+
+// B) Autocomplete par nom
+function offNameInput() {
+  if (offFromSelection) { offFromSelection = false; return; }
+  clearTimeout(offNameTimer);
+  const q = document.getElementById('f-name').value.trim();
+  if (q.length < 3 || !navigator.onLine) { closeOffDropdown(); return; }
+  offNameTimer = setTimeout(() => offSearchName(q), 400);
+}
+
+function offSearchName(q) {
+  const url = `https://world.openfoodfacts.org/cgi/search.pl`
+    + `?search_terms=${encodeURIComponent(q)}&search_simple=1&json=1&page_size=6`
+    + `&fields=product_name,product_name_fr,product_name_de,brands,code,categories_tags,quantity`
+    + `&lc=${currentLang}&cc=ch`;
+
+  fetch(url, { headers: OFF_HEADERS })
+    .then(r => r.json())
+    .then(data => {
+      const prods = (data && data.products) || [];
+      renderOffDropdown(prods);
+    })
+    .catch(() => closeOffDropdown());
+}
+
+function renderOffDropdown(prods) {
+  const dd = document.getElementById('off-dropdown');
+  if (!prods.length) { closeOffDropdown(); return; }
+  dd.innerHTML = prods.map((pr, i) => {
+    const name = (currentLang === 'de' ? pr.product_name_de : pr.product_name_fr) || pr.product_name || pr.brands || '?';
+    const sub = [pr.brands, pr.quantity].filter(Boolean).join(' ');
+    return `<div class="off-opt" data-i="${i}">${escapeHtml(name)}${sub ? ' <span class="off-brand">— ' + escapeHtml(sub) + '</span>' : ''}</div>`;
+  }).join('');
+  dd.classList.add('show');
+  // Mémorise les données pour la sélection
+  dd._prods = prods;
+  dd.querySelectorAll('.off-opt').forEach(opt => {
+    opt.addEventListener('click', () => offSelect(prods[+opt.dataset.i]));
+  });
+}
+
+function offSelect(pr) {
+  if (!pr) return;
+  const name = (currentLang === 'de' ? pr.product_name_de : pr.product_name_fr) || pr.product_name || pr.brands || '';
+  offFromSelection = true;
+  document.getElementById('f-name').value = name;
+  if (pr.brands && pr.brands !== name && !document.getElementById('f-notes').value.trim()) {
+    document.getElementById('f-notes').value = pr.brands;
+  }
+  if (pr.code && !document.getElementById('f-barcode').value.trim()) document.getElementById('f-barcode').value = pr.code;
+  const aisle = guessAisle(pr.categories_tags);
+  if (aisle && !document.getElementById('f-aisle').value) document.getElementById('f-aisle').value = aisle;
+  showOffCredit();
+  closeOffDropdown();
+}
+
+function closeOffDropdown() {
+  const dd = document.getElementById('off-dropdown');
+  if (dd) dd.classList.remove('show');
+}
+
+// Listeners OFF
+document.getElementById('f-name').addEventListener('input', offNameInput);
+document.getElementById('f-name').addEventListener('blur', () => setTimeout(closeOffDropdown, 150));
+document.getElementById('f-barcode').addEventListener('change', offBarcodeLookup);
+document.addEventListener('click', e => {
+  if (!e.target.closest('#off-dropdown') && e.target.id !== 'f-name') closeOffDropdown();
+});
+
+// ================================================================
+// PARAMÈTRES + ONBOARDING (langue & prénom) — features #2 & #6
+// ================================================================
+function openSettings() {
+  document.getElementById('settings-name').value = userName || '';
+  applyTranslations();
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function saveSettings() {
+  const name = document.getElementById('settings-name').value.trim();
+  if (name) { userName = name; localStorage.setItem('user-name', name); }
+  document.getElementById('settings-modal').classList.add('hidden');
+  showToast(t('settings_saved'));
+}
+
+// Change la langue à chaud (sans rechargement) — feature #6.5
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('app-lang', lang);
+  applyTranslations();
+  renderCurrent();
+  if (currentTab === 'qr') renderQR();
+  if (currentTab === 'stats') renderStats();
+}
+
+// Onboarding langue (1er lancement)
+function showLangModal() { document.getElementById('lang-modal').classList.remove('hidden'); }
+function chooseLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('app-lang', lang);
+  applyTranslations();
+  document.getElementById('lang-modal').classList.add('hidden');
+  if (!localStorage.getItem('user-name')) showNameModal();
+  else { renderCurrent(); bootData(); }
+}
+
+// Onboarding prénom (1er lancement)
+function showNameModal() {
+  applyTranslations();
+  document.getElementById('name-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('onboard-name').focus(), 100);
+}
+function finishNameOnboarding() {
+  const name = document.getElementById('onboard-name').value.trim();
+  if (!name) return;
+  userName = name;
+  localStorage.setItem('user-name', name);
+  document.getElementById('name-modal').classList.add('hidden');
+  renderCurrent();
+  bootData();
+}
+
+// ================================================================
+// SYNCHRO TEMPS RÉEL (FIREBASE FIRESTORE + AUTH ANONYME) — feature #1
+// ================================================================
+let fb = { ready: false, db: null, col: null };
+
+function firebaseConfigured() {
+  return typeof firebase !== 'undefined'
+    && firebaseConfig && typeof firebaseConfig.apiKey === 'string'
+    && !firebaseConfig.apiKey.startsWith('TON_');
+}
+
+// Démarre Firebase : init → AUTH ANONYME → persistance hors-ligne → écoute
+function startFirebase() {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    fb.db = firebase.firestore();
+    fb.col = fb.db.collection(FB_COLLECTION);
+    document.getElementById('last-update').textContent = t('connecting');
+
+    // Feature #1 : on s'authentifie de façon anonyme AVANT toute lecture/écriture.
+    firebase.auth().signInAnonymously()
+      .then(() => {
+        fb.ready = true;
+        fb.db.enablePersistence({ synchronizeTabs: true })
+          .catch(() => {})
+          .finally(() => subscribeFirebase());
+      })
+      .catch(e => {
+        console.warn('Auth anonyme échouée → mode local :', e);
+        showToast(t('auth_failed'));
+        localFallback();
+      });
+  } catch (e) {
+    console.warn('Firebase KO → mode local :', e);
+    localFallback();
+  }
+}
+
+function subscribeFirebase() {
+  fb.col.onSnapshot(snap => {
+    products = snap.docs.map(d => d.data());
+    migrateProducts();
+    localStorage.setItem('inventaire-maison-v1', JSON.stringify(products));
+    document.getElementById('last-update').textContent = t('synced_at', {
+      time: new Date().toLocaleTimeString(localeOf(), { hour: '2-digit', minute: '2-digit' })
+    });
+    renderCurrent();
+  }, err => {
+    console.warn('Erreur de synchro Firestore :', err);
+    showToast(t('sync_unavailable'));
+  });
+}
+
+function pushProduct(p) {
+  if (!fb.ready || !p) return;
+  fb.col.doc(p.id).set(p).catch(e => console.warn('Écriture cloud échouée :', e));
+}
+
+function removeProductRemote(id) {
+  if (!fb.ready || !id) return;
+  fb.col.doc(id).delete().catch(e => console.warn('Suppression cloud échouée :', e));
+}
+
+function pushMany(list) {
+  if (!fb.ready || !list || !list.length) return;
+  const batch = fb.db.batch();
+  list.forEach(p => batch.set(fb.col.doc(p.id), p));
+  batch.commit().catch(e => console.warn('Import cloud échoué :', e));
+}
+
+function renderCurrent() {
+  renderInventory();
+  if (currentTab === 'shopping') {
+    if (shoppingView === 'shop') renderShoppingMode();
+    else renderShopping();
+  }
+  if (currentTab === 'stats') renderStats();
+}
+
+function localFallback() {
+  if (products.length === 0) {
+    products = defaultProducts();
+    migrateProducts();
+    saveData();
+    renderInventory();
+  }
+  document.getElementById('last-update').textContent = t('local_mode', {
+    date: new Date().toLocaleDateString(localeOf(), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+  });
+}
+
+function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+  fetch('sw.js', { method: 'HEAD' })
+    .then(r => { if (r.ok) navigator.serviceWorker.register('sw.js').catch(() => {}); })
+    .catch(() => {});
+}
+
+// Démarre la synchro (Firebase) ou le mode local, une fois l'onboarding fait
+function bootData() {
+  if (firebaseConfigured()) startFirebase();
+  else localFallback();
+}
+
+// ================================================================
+// INITIALISATION
+// ================================================================
+loadData();
+applyTranslations();
+initSpeech();
+renderInventory();
+checkHash();
+registerSW();
+
+// Onboarding : langue puis prénom (1er lancement), sinon démarrage direct
+if (!localStorage.getItem('app-lang')) {
+  showLangModal();
+} else if (!localStorage.getItem('user-name')) {
+  showNameModal();
+} else {
+  bootData();
+}
+</script>
+</body>
+</html>
