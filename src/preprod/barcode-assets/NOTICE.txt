@@ -1,0 +1,18 @@
+html5-qrcode 2.3.8
+https://github.com/mebjas/html5-qrcode
+https://www.npmjs.com/package/html5-qrcode/v/2.3.8
+
+This distribution includes the unmodified browser release of html5-qrcode,
+including its bundled ZXing barcode decoder (https://github.com/zxing-js/library).
+These projects are licensed under Apache License 2.0. The upstream license is
+included as LICENSE-html5-qrcode.txt. Copyrights remain with their contributors.
+
+No external OCR, product lookup, telemetry or media upload is added by this app.
+
+Enhanced local decoder: zxing-wasm 2.2.1, reader-only distribution.
+https://github.com/Sec-ant/zxing-wasm/tree/v2.2.1
+Wrapper: MIT (LICENSE-zxing-wasm.txt); ZXing-C++ and C++ wrapper: Apache-2.0
+(LICENSE-zxing-cpp.txt, LICENSE-zxing-wrapper.txt).
+ZXing-C++ commit: c0a7c6cd2165457c721c58045edd22ffee9624e9.
+The reader JS and WASM files are unmodified upstream artifacts.
+No writer/zint artifact is included. All assets are served on this site only.

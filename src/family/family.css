@@ -1,0 +1,16 @@
+.family-panel{padding:12px 16px;background:var(--bg-card,#fff);border-bottom:2px solid var(--accent,#3d6b4f)}
+.family-panel h2{font-size:1rem}.family-panel p,.family-hint{font-size:.85rem;line-height:1.5}
+.family-panel select,.family-modal select,.family-modal input,.family-modal textarea{max-width:100%;font-size:16px;padding:10px;min-height:44px;border:1px solid #999;border-radius:8px;background:#fff;color:#222}
+.family-panel button,.family-row button,.family-modal button{min-height:44px;white-space:normal}.family-panel .sm-actions{gap:8px}
+.family-row{padding:14px;margin:10px 0;border:1px solid #bbb;border-radius:10px;background:#fff;color:#222;overflow-wrap:anywhere}
+.family-top,.family-source{display:flex;align-items:center;gap:10px}.family-top input,.family-source input{width:28px;height:28px;flex-shrink:0;margin:8px}
+.family-top>div{flex:1}.family-source{flex-wrap:wrap;border-top:1px solid #ccc;padding:8px 0}.family-row details{margin-top:10px}.family-row summary{min-height:44px;padding:12px;cursor:pointer}
+.family-modal{max-height:88dvh;overflow-y:auto;overscroll-behavior:contain;max-width:560px}.family-modal h3{margin:18px}.family-modal label{display:block;margin:10px 0}.family-modal label input:not([type=radio]):not([type=checkbox]),.family-modal label select{display:block;width:100%;box-sizing:border-box}
+.family-modal textarea{width:100%;min-height:140px;box-sizing:border-box}.family-modal .modal-footer{position:sticky;bottom:0;background:#fff;gap:8px}
+.family-choices{border:1px solid #bbb;border-radius:8px;padding:8px}.family-choices label{min-height:44px;display:flex;align-items:center;gap:10px}.family-choices input{width:24px;height:24px;flex-shrink:0}.family-preview{padding:12px;border-bottom:2px solid #aaa}
+.family-warning{font-weight:600;color:#853a00}.family-intent{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-top:1px solid #bbb;padding:8px}
+@media print{.family-panel,.family-overlay{display:none!important}}
+
+.family-modal input[type=checkbox]{width:24px;height:24px;min-height:24px;margin:10px}.family-modal pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}
+
+#device-uid{display:block;overflow-wrap:anywhere;font-size:1rem;padding:8px;user-select:all}.family-panel label{max-width:100%}

@@ -1,3 +1,19 @@
+# Inventaire Maison V0.2
+
+Application familiale : **https://sooap95.github.io/inventaire-app/**.
+
+La V0.2 conserve la base familiale et les identifiants produits, avec le design Art déco FR/DE, les ajustements +/− immédiats, le scanner rapide et Open Food Facts. Les courses manuelles, les doublons explicites, les achats partiels et les intentions hors ligne utilisent le journal familial sécurisé.
+
+**Guide actuel : [Utiliser la V0.2](VERSION-V02.md).** L’identification anonyme est automatique, mais chaque profil navigateur doit être autorisé une première fois par le propriétaire dans `members`. Aucun auto-enrôlement et aucun mot de passe quotidien.
+
+Le code livré ici est la distribution statique compilée du commit de développement `7e8b994`. Le code source, les tests et le dossier de conversion sont conservés sur la branche de développement et dans l’archive complète remise au propriétaire. Ne pas modifier seulement le bundle compilé pour une évolution métier.
+
+---
+
+## Documentation historique conservée
+
+Le guide ci-dessous décrit la version précédente. Ses instructions de configuration, de règles Firebase, de concurrence et d’import ne s’appliquent plus à la V0.2. En particulier, `request.auth != null` avec une authentification anonyme **ne limite pas l’accès à la famille**. Les règles V0.2 exigent un profil anonyme actif dans `members` et des opérations validées et atomiques. Le retour à l’ancien client nécessite une conversion contrôlée des données ; un simple retour de code est incompatible avec les nouveaux documents.
+
 # 🏠 Inventaire Maison
 
 Inventaire domestique partagé pour 3 utilisateurs : suivi des stocks, liste de courses

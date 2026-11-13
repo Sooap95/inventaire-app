@@ -1,3 +1,14 @@
+# Publication familiale V0.2 — 13 novembre 2026
+
+- Adresse GitHub Pages et projet Firebase historiques conservés ; base `(default)` en `eur3`, sans compte de facturation lié selon le contrôle Cloud Shell du propriétaire.
+- Sauvegarde privée vérifiée avant conversion. Le résultat `BACKEND_READY` fourni par le propriétaire confirme 37 produits convertis par un lot atomique de 38 écritures. Identifiants, quantités, unités, champs et historiques préservés ; aucun jeu de données fictif importé dans la base familiale.
+- Règles familiales fermées, autorisation administrative des profils anonymes, opérations idempotentes, conflits explicites et intentions hors ligne.
+- Design Art déco FR/DE, +/− immédiats, scanner rapide `b571536`, Open Food Facts (nom, marque, catégorie), QR local et recherche vocale historique lorsqu’elle est disponible.
+- Code source de référence `7e8b994` ; contrôles locaux : 182 unitaires, 73 de sécurité sur émulateurs, 26 navigateur, 14 de conversion et 18 de sauvegarde. Aucun essai Chromium présenté comme un essai sur téléphone réel.
+- La première autorisation de chaque profil reste une opération du propriétaire. Voir [le guide actuel](VERSION-V02.md). Après mise à jour, fermer les anciens onglets Inventaire puis rouvrir, sans effacer les données du navigateur.
+
+---
+
 # 📋 Journal du projet — Inventaire Maison
 
 Résumé du travail effectué, des choix faits et des pistes pour la suite.

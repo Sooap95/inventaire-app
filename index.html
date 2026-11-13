@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
+<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://world.openfoodfacts.org; worker-src 'self'; manifest-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'"><meta name="referrer" content="no-referrer"><script>window.PRODUCTION_BINDING={"projectId":"inventaire-maison-8fd95","projectNumber":"272639034410","databaseId":"(default)","location":"eur3","origin":"https://sooap95.github.io","basePath":"/inventaire-app/","firebase":{"apiKey":"AIzaSyAfzXb6eSKaFXPc7kkLnXfmHcO1kvpuCSk","authDomain":"inventaire-maison-8fd95.firebaseapp.com","projectId":"inventaire-maison-8fd95","storageBucket":"inventaire-maison-8fd95.firebasestorage.app","messagingSenderId":"272639034410","appId":"1:272639034410:web:18c837ff78c3eefa5faf53"}};window.FAMILY_LAB_CONFIG={mode:"production"};</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Inventaire Maison</title>
 
 <!-- === PWA / META MOBILE === -->
-<meta name="theme-color" content="#3d6b4f">
+<meta name="theme-color" content="#fff8ee">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -14,15 +14,20 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%233d6b4f'/%3E%3Ctext%20x='50'%20y='55'%20font-size='58'%20text-anchor='middle'%20dominant-baseline='central'%3E🏠%3C/text%3E%3C/svg%3E">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E🏠%3C/text%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="src/shopping/manual.css">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module" src="src/production/bootstrap.js"></script>
+<link rel="stylesheet" href="src/family/family.css">
+
+<script src="src/domain/stock.js"></script>
+
 <!-- Scanner de code-barres (EAN/UPC/QR) — fonctionne iOS + Android, nécessite https -->
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
 <!-- Firebase (synchro temps réel entre les 3 utilisateurs) — API compat (script classique) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+
 <!-- Authentification anonyme (sécurise l'accès Firestore) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
 <style>
   :root {
     --bg: #f7f5f0;
@@ -400,7 +405,8 @@
     .btn-label { display: none; }
   }
 </style>
-</head>
+<link rel="stylesheet" href="src/ui/art-deco.css">
+<script src="src/preprod/barcode-assets/html5-qrcode-2.3.8.min.js"></script><script src="src/preprod/barcode-assets/zxing-wasm-2.2.1-reader.js"></script><script src="src/production/vendor/qrcode-1.0.0.min.js"></script><style>input,textarea,select{font-size:16px}button,.tab{min-height:44px}#family-network{display:none}body{overflow-wrap:anywhere}.family-row.voice-hit{outline:3px solid #AA2F60}.family-modal{padding-bottom:env(safe-area-inset-bottom)}</style></head>
 <body>
 
 <header>
@@ -409,10 +415,7 @@
     <div class="subtitle" id="last-update" data-i18n="loading">Chargement...</div>
   </div>
   <div class="header-actions">
-    <button class="btn btn-white btn-sm" onclick="exportData()" data-i18n-title="export_title">💾<span class="btn-label" data-i18n="btn_export">Export</span></button>
-    <button class="btn btn-white btn-sm" onclick="triggerImport()" data-i18n-title="import_title">📂<span class="btn-label" data-i18n="btn_import">Import</span></button>
-    <button class="btn btn-white btn-sm" onclick="openAddModal()" data-i18n="btn_add_product">+ Produit</button>
-    <button class="btn btn-white btn-sm" onclick="openSettings()" data-i18n-title="settings_title">⚙️</button>
+    <button class="btn btn-accent header-add" onclick="openAddModal()" data-i18n="btn_add_product">+ Produit</button>
   </div>
 </header>
 
@@ -420,16 +423,17 @@
 <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="handleImportFile(this)">
 
 <div class="main">
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('inventory')" data-i18n="tab_inventory">📦 Inventaire</button>
-    <button class="tab" onclick="switchTab('shopping')" data-i18n="tab_shopping">🛒 Liste de courses</button>
-    <button class="tab" onclick="switchTab('qr')" data-i18n="tab_scan">📷 Scan</button>
-    <button class="tab" onclick="switchTab('stats')" data-i18n="tab_stats">📊 Stats</button>
-  </div>
-
   <!-- === TAB INVENTAIRE === -->
   <div id="tab-inventory">
+    <div class="view-hero">
+      <div>
+        <span class="deco-eyebrow" data-i18n="home_kicker">LES ESSENTIELS DU FOYER</span>
+        <h2 data-i18n="home_heading">À la maison</h2>
+        <p data-i18n="home_subtitle">Vos réserves, à portée de main.</p>
+      </div>
+      <span class="hero-illustration" aria-hidden="true">🧺</span>
+    </div>
+    <div class="home-note" aria-live="polite"><span class="home-note-symbol" aria-hidden="true">✧</span><strong id="home-note-count">&nbsp;</strong><span data-i18n="home_note">Votre liste se prépare à partir du stock.</span><button type="button" class="home-note-link" onclick="switchTab('shopping')" data-i18n="home_open_courses">Voir les courses</button></div>
     <div class="stats-bar">
       <div class="stat-card stat-danger">
         <div class="stat-value" id="stat-low">0</div>
@@ -469,12 +473,12 @@
       </div>
     </div>
 
-    <!-- Vue 1 : liste classique (cases à cocher, impression, copie) -->
-    <div id="shopping-list-view">
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px">
+    <div class="sm-output-actions" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-bottom:12px">
         <button class="btn btn-outline btn-sm" onclick="printShopping()" data-i18n="btn_print">🖨️ Imprimer</button>
         <button class="btn btn-outline btn-sm" onclick="copyShopping()" data-i18n="btn_copy">📋 Copier</button>
-      </div>
+    </div>
+    <!-- Vue 1 : liste classique (cases à cocher) -->
+    <div id="shopping-list-view">
       <div id="shopping-list-content"></div>
     </div>
 
@@ -507,6 +511,7 @@
 
   <!-- === TAB STATS === -->
   <div id="tab-stats" style="display:none">
+    <div class="view-hero compact"><div><span class="deco-eyebrow" data-i18n="more_kicker">LA MAISON EN CHIFFRES</span><h2 data-i18n="tab_stats">Statistiques</h2></div><button type="button" class="btn btn-outline" onclick="switchTab('more')" data-i18n="more_back">← Plus</button></div>
     <div class="field" style="margin-bottom:14px">
       <label data-i18n="stats_select_label">Produit</label>
       <select id="stats-select" onchange="renderStats()"></select>
@@ -517,7 +522,31 @@
     <div class="stats-info" id="stats-info"></div>
     <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="adjustThresholdsFromStats()" data-i18n="stats_adjust_btn">Ajuster les seuils</button>
   </div>
+  <!-- Les fonctions secondaires sont accessibles depuis Plus, sans retirer aucun outil. -->
+  <div id="tab-more" style="display:none">
+    <div class="view-hero compact"><div><span class="deco-eyebrow" data-i18n="more_kicker">LES OUTILS DE LA MAISON</span><h2 data-i18n="tab_more">Plus</h2><p data-i18n="more_subtitle">Réglages, statistiques et sauvegardes.</p></div><span class="hero-illustration" aria-hidden="true">✦</span></div>
+    <div class="more-panel">
+      <h3 data-i18n="more_activity">Suivi du stock</h3>
+      <button type="button" class="more-action" onclick="switchTab('stats')"><span aria-hidden="true">📊</span><span data-i18n="more_stats">Voir les statistiques</span><span aria-hidden="true">›</span></button>
+    </div>
+    <div class="more-panel">
+      <h3 data-i18n="more_preferences">Préférences</h3>
+      <button type="button" class="more-action" onclick="openSettings()"><span aria-hidden="true">⚙️</span><span data-i18n="settings_title">Paramètres</span><span aria-hidden="true">›</span></button>
+    </div>
+    <div class="more-panel">
+      <h3 data-i18n="more_files">Vos données</h3>
+      <button type="button" class="more-action" onclick="exportData()"><span aria-hidden="true">💾</span><span data-i18n="export_title">Exporter en JSON</span><span aria-hidden="true">›</span></button>
+      <button type="button" class="more-action" onclick="triggerImport()"><span aria-hidden="true">📂</span><span data-i18n="import_title">Importer un JSON</span><span aria-hidden="true">›</span></button>
+    </div>
+  </div>
 </div>
+
+<nav class="tabs bottom-tabs" aria-label="Navigation principale" data-i18n-aria="main_navigation">
+  <button class="tab active" type="button" aria-current="page" data-tab="inventory" onclick="switchTab('inventory')" data-i18n="tab_inventory">Stock</button>
+  <button class="tab" type="button" data-tab="shopping" onclick="switchTab('shopping')" data-i18n="tab_shopping">Courses</button>
+  <button class="tab" type="button" data-tab="qr" onclick="switchTab('qr')" data-i18n="tab_scan">Scanner</button>
+  <button class="tab" type="button" data-tab="more" onclick="switchTab('more')" data-i18n="tab_more">Plus</button>
+</nav>
 
 <!-- Modal Ajout/Edit produit -->
 <div class="modal-overlay hidden" id="product-modal">
@@ -765,14 +794,7 @@
 // temps réel entre les 3 téléphones. Tant que les valeurs commencent
 // par "TON_", l'appli tourne en mode LOCAL (localStorage), sans synchro.
 // ================================================================
-const firebaseConfig = {
-  apiKey: "AIzaSyAfzXb6eSKaFXPc7kkLnXfmHcO1kvpuCSk",
-  authDomain: "inventaire-maison-8fd95.firebaseapp.com",
-  projectId: "inventaire-maison-8fd95",
-  storageBucket: "inventaire-maison-8fd95.firebasestorage.app",
-  messagingSenderId: "272639034410",
-  appId: "1:272639034410:web:18c837ff78c3eefa5faf53"
-};
+const firebaseConfig = {}; // Legacy transport disabled; production runtime owns Auth.
 const FB_COLLECTION = 'products'; // nom de la collection Firestore (à laisser tel quel)
 
 // ================================================================
@@ -787,7 +809,12 @@ const TRANSLATIONS = {
     export_title: 'Exporter en JSON', import_title: 'Importer un JSON',
     settings_title: 'Paramètres', voice_title: 'Recherche vocale',
     // Onglets
-    tab_inventory: '📦 Inventaire', tab_shopping: '🛒 Liste de courses', tab_scan: '📷 Scan', tab_stats: '📊 Stats',
+    tab_inventory: 'Stock', tab_shopping: 'Courses', tab_scan: 'Scanner', tab_stats: 'Statistiques', tab_more: 'Plus', qr_unavailable: 'Code QR indisponible dans cette recette. Aucun service externe activé.', main_navigation: 'Navigation principale',
+    home_kicker: 'LES ESSENTIELS DU FOYER', home_heading: 'À la maison', home_subtitle: 'Vos réserves, à portée de main.',
+    home_needed: '{n} produit(s) à prévoir', home_ready: 'Tout est prêt à la maison', home_empty: 'Aucune réserve affichée', home_note: 'Votre liste se prépare à partir du stock.', home_open_courses: 'Voir les courses',
+    more_kicker: 'LES OUTILS DE LA MAISON', more_subtitle: 'Réglages, statistiques et sauvegardes.', more_back: '← Plus',
+    more_activity: 'Suivi du stock', more_stats: 'Voir les statistiques', more_preferences: 'Préférences', more_files: 'Vos données',
+    product_details: 'Détails et actions', product_history: 'Historique', product_edit: 'Modifier', product_delete: 'Supprimer', product_down: 'Retirer une unité de', product_up: 'Ajouter une unité de',
     // Stats bar
     stat_to_buy: 'À racheter', stat_low: 'Stock faible', stat_ok: 'OK',
     // Filtres
@@ -877,7 +904,12 @@ const TRANSLATIONS = {
     btn_export: 'Export', btn_import: 'Import', btn_add_product: '+ Produkt',
     export_title: 'Als JSON exportieren', import_title: 'JSON importieren',
     settings_title: 'Einstellungen', voice_title: 'Sprachsuche',
-    tab_inventory: '📦 Inventar', tab_shopping: '🛒 Einkaufsliste', tab_scan: '📷 Scan', tab_stats: '📊 Statistik',
+    tab_inventory: 'Vorrat', tab_shopping: 'Einkauf', tab_scan: 'Scannen', tab_stats: 'Statistik', tab_more: 'Mehr', qr_unavailable: 'QR-Code in diesem Test nicht verfügbar. Keine externen Dienste aktiviert.', main_navigation: 'Hauptnavigation',
+    home_kicker: 'ALLES FÜR ZU HAUSE', home_heading: 'Zu Hause', home_subtitle: 'Der Vorrat auf einen Blick.',
+    home_needed: '{n} Produkt(e) nachkaufen', home_ready: 'Zu Hause ist alles da', home_empty: 'Keine Vorräte angezeigt', home_note: 'Die Einkaufsliste ergibt sich aus dem Vorrat.', home_open_courses: 'Einkaufsliste ansehen',
+    more_kicker: 'HAUSHALTSWERKZEUGE', more_subtitle: 'Einstellungen, Statistiken und Sicherungen.', more_back: '← Mehr',
+    more_activity: 'Vorrat im Blick', more_stats: 'Statistik ansehen', more_preferences: 'Einstellungen', more_files: 'Deine Daten',
+    product_details: 'Details und Aktionen', product_history: 'Verlauf', product_edit: 'Bearbeiten', product_delete: 'Löschen', product_down: 'Eine Einheit entfernen von', product_up: 'Eine Einheit hinzufügen zu',
     stat_to_buy: 'Nachkaufen', stat_low: 'Wenig Vorrat', stat_ok: 'OK',
     search_ph: '🔍 Produkt suchen...', scan_title: 'Barcode scannen', all_categories: 'Alle Kategorien',
     status_low: 'Nachkaufen', status_medium: 'Wenig Vorrat', status_ok: 'OK',
@@ -997,9 +1029,10 @@ function catLabel(c) {
 function applyTranslations() {
   document.documentElement.lang = currentLang;
   document.title = t('doc_title');
-  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n]').forEach(el => { if(el.id==='last-update'&&window.FamilyApp)return; el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.dataset.i18nAria)));
   // Options dynamiques (rayons, catégories, fréquences)
   document.querySelectorAll('#f-aisle option[data-aisle]').forEach(o => o.textContent = aisleLabel(o.value));
   document.querySelectorAll('#f-cat option[data-cat]').forEach(o => o.textContent = catLabel(o.value));
@@ -1022,11 +1055,13 @@ function applyTranslations() {
 
 let products = [];
 let editingId = null;
+let editingRevision = null;
 let quickEditId = null;
 let currentTab = 'inventory';
 
 // Charge les données depuis le localStorage du navigateur
 function loadData() {
+  if(window.FAMILY_LAB_CONFIG){products=[];return;}
   const raw = localStorage.getItem('inventaire-maison-v1');
   if (raw) {
     try { products = JSON.parse(raw); } catch(e) { products = []; }
@@ -1064,6 +1099,7 @@ function pushRestock(p, qty) {
 
 // Sauvegarde les données dans le localStorage
 function saveData() {
+  if(window.FAMILY_LAB_CONFIG)return;
   localStorage.setItem('inventaire-maison-v1', JSON.stringify(products));
   document.getElementById('last-update').textContent = t('updated_on', {
     date: new Date().toLocaleDateString(localeOf(), {day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})
@@ -1094,16 +1130,14 @@ function uid() {
 // STATUT D'UN PRODUIT
 // ================================================================
 function getStatus(p) {
-  if (p.stock <= p.threshold) return 'low';
-  if (p.stock <= p.threshold * 1.5) return 'medium';
-  return 'ok';
+  return InventoryStock.getStatus(p);
 }
 
 // ================================================================
 // HELPERS — fréquence de conso & dates lisibles
 // ================================================================
 function freqDays(f) {
-  return { quotidien: 1, hebdomadaire: 7, mensuel: 30, trimestriel: 90 }[f] || null;
+  return InventoryStock.freqDays(f);
 }
 
 // Date lisible relative, traduite, précise sous 24h (feature #2.5)
@@ -1129,17 +1163,12 @@ function relativeTime(iso) {
 
 // Prédit une rupture proche : lastRestocked + fréquence tombe dans moins de 7 jours
 function isDepletingSoon(p) {
-  const d = freqDays(p.frequency);
-  if (!d || !p.lastRestocked) return false;
-  const next = new Date(p.lastRestocked).getTime();
-  if (isNaN(next)) return false;
-  const daysLeft = (next + d * 86400000 - Date.now()) / 86400000;
-  return daysLeft < 7;
+  return InventoryStock.isDepletingSoon(p);
 }
 
 // Produit "à anticiper" : pas encore sous le seuil mais bientôt en rupture (feature #3)
 function isSuggested(p) {
-  return getStatus(p) === 'ok' && isDepletingSoon(p);
+  return InventoryStock.isSuggested(p);
 }
 
 function escapeHtml(s) {
@@ -1149,7 +1178,15 @@ function escapeHtml(s) {
 // ================================================================
 // RENDU — onglet Inventaire
 // ================================================================
+let stockRenderUntil=0,stockRenderTimer=null;const stockPointers=new Set();
+function quickRenderDeferred(){return !!stockPointers.size||performance.now()<stockRenderUntil;}
+function beginStockInteraction(){
+ if(!window.FAMILY_LAB_CONFIG)return;stockRenderUntil=performance.now()+400;clearTimeout(stockRenderTimer);
+ const finish=()=>{if(quickRenderDeferred()){stockRenderTimer=setTimeout(finish,50);return;}window.FamilyApp?.refresh();renderCurrent();};stockRenderTimer=setTimeout(finish,410);
+}
 function renderInventory() {
+ if(window.FAMILY_LAB_CONFIG&&products.length&&quickRenderDeferred()){window.FamilyApp?.renderQuickStock();return;}
+
   const search = document.getElementById('search-input').value.toLowerCase();
   const catFilter = document.getElementById('cat-filter').value;
 
@@ -1167,6 +1204,8 @@ function renderInventory() {
   document.getElementById('stat-low').textContent = products.filter(p => getStatus(p) === 'low').length;
   document.getElementById('stat-medium').textContent = products.filter(p => getStatus(p) === 'medium').length;
   document.getElementById('stat-ok').textContent = products.filter(p => getStatus(p) === 'ok').length;
+  const needCount = products.filter(p => getStatus(p) !== 'ok').length;
+  document.getElementById('home-note-count').textContent = !products.length ? t('home_empty') : needCount ? t('home_needed', {n:needCount}) : t('home_ready');
 
   // Filtre catégorie (valeur = catégorie canonique, libellé traduit)
   const cats = [...new Set(products.map(p => p.category))].sort();
@@ -1195,31 +1234,41 @@ function renderInventory() {
     const editorLine = p.lastEditedBy
       ? '<div class="product-editor">' + t('edited_by', { name: escapeHtml(p.lastEditedBy), time: relativeTime(p.updatedAt) }) + '</div>'
       : '';
+    const categoryIcon = ({Alimentation:'🥫','Hygiène':'🧼',Ménager:'🧽',Pharmacie:'💊','Bébé':'🍼',Autre:'📦'})[p.category] || '📦';
     return `
-      <div class="product-card status-${status}" data-id="${p.id}">
-        <div class="product-info">
-          <div class="product-name">${escapeHtml(p.name)}</div>
-          <div class="product-meta">${meta}</div>
-          <div class="product-restock">${t('last_buy', { time: relativeTime(p.lastRestocked) })}${p.frequency ? ' · ' + escapeHtml(freqLabel(p.frequency)) : ''}</div>
-          ${editorLine}
-        </div>
-        ${soonBadge}
-        <span class="status-badge badge-${status}">${statusLabel}</span>
-        <div class="stock-control">
-          <button class="stock-btn" onclick="adjustStock('${p.id}', -1)">−</button>
-          <div>
-            <div class="stock-value ${stockClass}">${p.stock}</div>
-            <div class="stock-unit">${escapeHtml(p.unit)}</div>
+      <div class="product-card status-${status}" data-id="${escapeHtml(p.id)}">
+        <div class="product-card-primary">
+          <div class="product-picture" aria-hidden="true">${categoryIcon}</div>
+          <div class="product-info">
+            <div class="product-name">${escapeHtml(p.name)}</div>
+            <div class="product-meta">${escapeHtml(catLabel(p.category))}</div>
+            <div class="product-flags"><span class="status-badge badge-${status}">${statusLabel}</span>${soonBadge}</div>
           </div>
-          <button class="stock-btn" onclick="adjustStock('${p.id}', 1)">+</button>
+          <div class="stock-control">
+            <button class="stock-btn" data-product-action="stock" data-product-id="${escapeHtml(p.id)}" data-delta="-1" aria-label="${escapeHtml(t('product_down'))} ${escapeHtml(p.name)}">−</button>
+            <div>
+              <div class="stock-value ${stockClass}">${p.stock}</div>
+              <div class="stock-unit">${escapeHtml(p.unit)}</div>
+            </div>
+            <button class="stock-btn" data-product-action="stock" data-product-id="${escapeHtml(p.id)}" data-delta="1" aria-label="${escapeHtml(t('product_up'))} ${escapeHtml(p.name)}">+</button>
+          </div>
         </div>
-        <div class="product-actions">
-          <button class="icon-btn" onclick="openEditModal('${p.id}')">✏️</button>
-          <button class="icon-btn" onclick="deleteProduct('${p.id}')" style="color:var(--danger)">🗑️</button>
-        </div>
+        <details class="product-card-details"><summary>${t('product_details')}</summary>
+          <div class="product-expanded">
+            <div class="product-meta">${meta}</div>
+            <div class="product-restock">${t('last_buy', { time: relativeTime(p.lastRestocked) })}${p.frequency ? ' · ' + escapeHtml(freqLabel(p.frequency)) : ''}</div>
+            ${editorLine}
+            <div class="product-actions">
+              <button class="icon-btn" data-product-action="history" data-product-id="${escapeHtml(p.id)}" aria-label="${escapeHtml(t('product_history'))} ${escapeHtml(p.name)}">◷ ${t('product_history')}</button>
+              <button class="icon-btn" data-product-action="edit" data-product-id="${escapeHtml(p.id)}" aria-label="${escapeHtml(t('product_edit'))} ${escapeHtml(p.name)}">✏️ ${t('product_edit')}</button>
+              <button class="icon-btn" data-product-action="delete" data-product-id="${escapeHtml(p.id)}" aria-label="${escapeHtml(t('product_delete'))} ${escapeHtml(p.name)}">🗑️ ${t('product_delete')}</button>
+            </div>
+          </div>
+        </details>
       </div>
     `;
   }).join('');
+  window.FamilyApp?.renderQuickStock();
 }
 
 // ================================================================
@@ -1268,6 +1317,8 @@ function groupByAisleHtml(list, itemFn) {
 }
 
 function renderShopping() {
+  if(window.FamilyApp?.render()) return;
+  if (window.ManualShopping?.render()) return;
   const toShop = products.filter(p => getStatus(p) !== 'ok');
   const suggested = products.filter(p => isSuggested(p)); // feature #3
   const container = document.getElementById('shopping-list-content');
@@ -1310,14 +1361,14 @@ function renderShopping() {
 }
 
 function shoppingItem(p, cls) {
-  const need = Math.max(0, p.target - p.stock);
+  const need = InventoryStock.quantityNeeded(p);
   let badge = '';
   if (cls === 'urgent') badge = '<span style="font-size:10px;background:var(--danger-light);color:var(--danger);padding:1px 6px;border-radius:10px;font-weight:700;margin-left:6px">' + t('badge_urgent').toUpperCase() + '</span>';
   else if (cls === 'suggested') badge = '<span style="font-size:10px;background:var(--warn-light);color:var(--warn);padding:1px 6px;border-radius:10px;font-weight:700;margin-left:6px">' + t('badge_suggested') + '</span>';
   return `
-    <div class="shopping-item ${cls}" id="si-${p.id}">
-      <input type="checkbox" id="cb-${p.id}" onchange="toggleCheck('${p.id}', this)">
-      <label for="cb-${p.id}">${escapeHtml(p.name)}${badge}${p.notes ? '<span style="color:var(--muted);font-size:12px;margin-left:4px">('+escapeHtml(p.notes)+')</span>' : ''}</label>
+    <div class="shopping-item ${cls}" id="si-${escapeHtml(p.id)}">
+      <input type="checkbox" id="cb-${escapeHtml(p.id)}" data-product-action="check" data-product-id="${escapeHtml(p.id)}">
+      <label for="cb-${escapeHtml(p.id)}">${escapeHtml(p.name)}${badge}${p.notes ? '<span style="color:var(--muted);font-size:12px;margin-left:4px">('+escapeHtml(p.notes)+')</span>' : ''}</label>
       <span class="need-qty">${need > 0 ? '×' + need + ' ' + escapeHtml(p.unit) : escapeHtml(p.unit)}</span>
     </div>`;
 }
@@ -1335,6 +1386,8 @@ function toggleCheck(id, cb) {
 }
 
 function copyShopping() {
+  if(window.FamilyApp?.copy()) return;
+  if (window.ManualShopping?.copy()) return;
   const toShop = products.filter(p => getStatus(p) !== 'ok');
   if (toShop.length === 0) { alert(t('nothing_to_buy_alert')); return; }
 
@@ -1352,7 +1405,7 @@ function copyShopping() {
     byAisle[aisle]
       .sort((a,b) => (getStatus(a)==='low'?0:1)-(getStatus(b)==='low'?0:1)||a.name.localeCompare(b.name))
       .forEach(p => {
-        const need = Math.max(0, p.target - p.stock);
+        const need = InventoryStock.quantityNeeded(p);
         const flag = getStatus(p) === 'low' ? '🔴 ' : '🟡 ';
         text += `${flag}${p.name}${need > 0 ? ' ×' + need + ' ' + p.unit : ''}\n`;
       });
@@ -1362,16 +1415,25 @@ function copyShopping() {
   navigator.clipboard.writeText(text).then(() => showToast(t('copied_ok')));
 }
 
-function printShopping() { window.print(); }
+function printShopping() { buildPrintArea(); window.print(); }
 
 // ================================================================
 // RENDU — onglet Scan & QR
 // ================================================================
+function openProductHistory(id) {
+  if(window.FAMILY_LAB_CONFIG&&!window.FamilyApp?.allowProductAction())return;
+  if(!products.some(p=>p.id===id))return;
+  switchTab('stats');
+  document.getElementById('stats-select').value=id;
+  renderStats();
+}
+
 function renderQR() {
   const url = window.location.href.split('#')[0];
   document.getElementById('app-qr-url').textContent = url;
   const box = document.getElementById('app-qr-display');
   box.innerHTML = '';
+  if (typeof QRCode==='undefined') { box.textContent=t('qr_unavailable'); return; }
   new QRCode(box, {
     text: url, width: 200, height: 200,
     colorDark: '#1a1a18', colorLight: '#ffffff'
@@ -1381,61 +1443,207 @@ function renderQR() {
 // ================================================================
 // SCANNER DE CODE-BARRES (html5-qrcode)
 // ================================================================
-let html5Qr = null;
-let scanRunning = false;
-let pendingBarcode = null;
-
-function openScanner() {
-  if (!window.isSecureContext) { showToast(t('scan_needs_https')); return; }
-  if (typeof Html5Qrcode === 'undefined') { showToast(t('scan_unavailable')); return; }
-
-  document.getElementById('scan-hint').textContent = t('scan_aim');
-  document.getElementById('scan-modal').classList.remove('hidden');
-
-  html5Qr = new Html5Qrcode('reader');
-  scanRunning = true;
-  html5Qr.start(
-    { facingMode: 'environment' },
-    { fps: 10, qrbox: { width: 280, height: 160 } },
-    decodedText => handleScanResult(decodedText),
-    () => {}
-  ).catch(err => {
-    scanRunning = false;
-    document.getElementById('scan-hint').textContent = t('cam_error', { err: err });
+// Built into the historical scanner section of the preproduction HTML only.
+// Same html5-qrcode API; results stay local until an explicit product form save.
+let html5Qr=null,scanRunning=false,pendingBarcode=null;
+let barcodeStart=null,barcodeStop=Promise.resolve(),barcodeSequence=0,barcodeAccepted=false;
+let barcodeProbe=null;
+let barcodeDecoderReady=null,barcodeFrameStop=()=>{};
+const barcodeCameraKey='inventaire-preprod-barcode-camera-v1';
+const barcodeWords=()=>currentLang==='de'?{
+ aim:'Den gesamten Barcode im Vorschaubild sichtbar halten.',start:'Neuer Scan',stop:'Stoppen',check:'Code prüfen',manual:'Produkt manuell eingeben',code:'Barcode',unknown:'Unbekanntes Produkt. Manuelle Eingabe möglich.',found:'Im Inventar: ',invalid:'Gültige EAN-13, UPC-A (12 Stellen) oder EAN-8 eingeben.',error:'Kamera nicht verfügbar. Kamerazugriff in Safari erlauben oder den Code manuell eingeben.',stopped:'Kamera gestoppt. Neuer Scan oder manuelle Eingabe möglich.',camera:'Kamera',automatic:'Automatische Auswahl (hinten)',cameraTip:'Bild unscharf? Abstand anpassen oder eine andere Kamera wählen. Die Auswahl wird in diesem Browser gespeichert.',fallback:'Gespeicherte Kamera nicht verfügbar. Andere Rückkamera verwendet; Auswahl bei Bedarf ändern.',compatible:'Kompatibilitätsmodus: eingeschränkte Erkennung. Bei Bedarf den Code manuell eingeben.'
+}:{aim:'Garde le code-barres entier visible dans l’aperçu.',start:'Nouveau scan',stop:'Arrêter',check:'Vérifier le code',manual:'Saisir le produit manuellement',code:'Code-barres',unknown:'Produit inconnu. Saisie manuelle disponible.',found:'Dans l’inventaire : ',invalid:'Saisir un EAN-13, un UPC-A (12 chiffres) ou un EAN-8 valide.',error:'Caméra indisponible. Autoriser la caméra dans Safari ou saisir le code manuellement.',stopped:'Caméra arrêtée. Nouveau scan ou saisie manuelle disponible.',camera:'Caméra',automatic:'Choix automatique (arrière)',cameraTip:'Image floue ? Ajuste la distance ou choisis une autre caméra. Le choix reste mémorisé dans ce navigateur.',fallback:'Caméra mémorisée indisponible. Autre caméra arrière utilisée ; change le choix si nécessaire.',compatible:'Mode compatible : reconnaissance limitée. Saisis le code manuellement si nécessaire.'};
+function validBarcode(code){
+ if(!/^(?:\d{8}|\d{12}|\d{13})$/.test(code))return false;
+ let sum=0;for(let i=code.length-2,n=0;i>=0;i--,n++)sum+=Number(code[i])*(n%2?1:3);
+ return (10-sum%10)%10===Number(code.at(-1));
+}
+function barcodeAliases(code){return code.length===12?[code,'0'+code]:code.length===13&&code[0]==='0'?[code,code.slice(1)]:[code];}
+function barcodeAllowed(){return window.FAMILY_LAB_CONFIG?.mode==='production'&&window.FamilyApp?.runtimeInfo?.barcodeScanner===true&&window.FamilyApp.allowProductAction();}
+// Device order is not a lens contract. Use known FR/DE/EN labels only; unknown
+// labels stay available in the selector, without guessing a physical lens.
+function barcodeCameraScore(label){
+ const name=String(label||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ if(/front|facetime|truedepth|avant|frontal|vorder|selfie/.test(name))return -1;
+ if(!/back|rear|arriere|ruck|rueck|hinter/.test(name))return -1;
+ if(/triple|dual|double|dreifach/.test(name))return 110;
+ if(/ultra|macro|tele|virtual|composite|0[.,]5\s*[x×]/.test(name))return -1;
+ return /wide|grand.?angle|weitwinkel|standard|1\s*[x×]/.test(name)?100:80;
+}
+function barcodeCameraChoice(devices,saved){
+ if(saved&&devices.some(d=>d.deviceId===saved))return saved;
+ return devices.filter(d=>barcodeCameraScore(d.label)>=0).sort((a,b)=>barcodeCameraScore(b.label)-barcodeCameraScore(a.label))[0]?.deviceId||'';
+}
+function barcodeCameraPreference(value){
+ try{if(value===undefined)return localStorage.getItem(barcodeCameraKey)||'';if(value)localStorage.setItem(barcodeCameraKey,value);else localStorage.removeItem(barcodeCameraKey);}catch{}
+ return '';
+}
+async function barcodeCameras(){try{return (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'&&d.deviceId);}catch{return [];}}
+function barcodeCurrent(sequence){return sequence===barcodeSequence&&!document.hidden&&!document.getElementById('scan-modal').classList.contains('hidden')&&barcodeAllowed();}
+async function barcodeCameraRequest(sequence,explicit){
+ if(explicit)return {deviceId:{exact:explicit}};
+ let devices=await barcodeCameras();if(!barcodeCurrent(sequence))return null;
+ const saved=barcodeCameraPreference(),revealed=devices.some(d=>d.label);
+ // Safari may hide every label until permission is granted. Reuse a previously
+ // successful ID directly; do not reopen an automatic camera just to list it.
+ const preferred=barcodeCameraChoice(devices,saved)||(!revealed?saved:'');
+ if(preferred)return {deviceId:{exact:preferred}};
+ if(saved&&revealed)barcodeCameraPreference('');
+ if(!revealed&&navigator.mediaDevices?.getUserMedia){
+  let stream;
+  try{
+   stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});barcodeProbe=stream;
+   if(!barcodeCurrent(sequence))return null;
+   devices=await barcodeCameras();if(!barcodeCurrent(sequence))return null;
+   const id=barcodeCameraChoice(devices,'')||stream.getVideoTracks()[0]?.getSettings?.().deviceId;
+   if(id)return {deviceId:{exact:id}};
+  }finally{for(const track of stream?.getTracks()||[])track.stop();if(barcodeProbe===stream)barcodeProbe=null;}
+ }
+ return {facingMode:'environment'};
+}
+async function barcodeCameraOptions(sequence){
+ const devices=await barcodeCameras();if(sequence!==barcodeSequence)return;
+ const label=document.getElementById('barcode-camera-label'),select=document.getElementById('barcode-camera'),w=barcodeWords();
+ label.firstChild.textContent=w.camera;select.replaceChildren();
+ const add=(id,name)=>{const o=document.createElement('option');o.value=id;o.textContent=name;select.append(o);};
+ add('',w.automatic);for(const [i,device] of devices.entries())add(device.deviceId,device.label||w.camera+' '+(i+1));
+ const active=document.querySelector('#reader video')?.srcObject?.getVideoTracks?.()[0]?.getSettings?.().deviceId||barcodeCameraPreference();
+ if(devices.some(d=>d.deviceId===active))select.value=active;
+ label.hidden=devices.length<2;label.style.display=label.hidden?'none':'block';document.getElementById('barcode-camera-tip').textContent=w.cameraTip;
+}
+function barcodeControls(){
+ if(document.getElementById('barcode-result'))return;
+ const body=document.querySelector('#scan-modal .modal-body'),result=document.createElement('p'),controls=document.createElement('div'),input=document.createElement('input');
+ result.id='barcode-result';result.setAttribute('role','status');result.setAttribute('aria-live','polite');result.style.overflowWrap='anywhere';
+ input.id='barcode-manual-code';input.inputMode='numeric';input.type='text';input.autocomplete='off';input.setAttribute('aria-label',barcodeWords().code);input.style.cssText='font-size:16px;width:100%;box-sizing:border-box;min-height:44px';
+ controls.style.cssText='display:flex;flex-wrap:wrap;gap:8px;margin-top:12px';
+ const add=(id,text,fn)=>{const b=document.createElement('button');b.id=id;b.type='button';b.className='btn btn-outline';b.style.minHeight='44px';b.textContent=text;b.onclick=fn;controls.append(b);return b;};
+ add('barcode-restart',barcodeWords().start,()=>startBarcode());
+ add('barcode-stop',barcodeWords().stop,()=>{barcodeSequence++;void stopScanIfRunning();document.getElementById('scan-hint').textContent=barcodeWords().stopped;});
+ add('barcode-check',barcodeWords().check,()=>handleScanResult(input.value.trim(),true));
+ const manual=add('barcode-product-manual',barcodeWords().manual,()=>{if(!barcodeAllowed())return;const code=input.value.trim();if(!validBarcode(code))return;pendingBarcode=code;closeScanner();createFromScan();});manual.hidden=true;manual.style.display='none';
+ const cameraLabel=document.createElement('label'),camera=document.createElement('select'),tip=document.createElement('small');
+ cameraLabel.id='barcode-camera-label';cameraLabel.append(document.createTextNode(barcodeWords().camera));cameraLabel.hidden=true;cameraLabel.style.display='none';
+ camera.id='barcode-camera';camera.style.cssText='display:block;font-size:16px;min-height:44px;width:100%;max-width:100%;margin-top:4px';camera.onchange=()=>{const id=camera.value;barcodeCameraPreference('');void startBarcode(id);};
+ tip.id='barcode-camera-tip';tip.style.cssText='display:block;margin:6px 0;overflow-wrap:anywhere';cameraLabel.append(camera,tip);
+ body.append(result,input,cameraLabel,controls);
+}
+function barcodeReleaseTracks(){for(const track of barcodeProbe?.getTracks()||[])track.stop();for(const video of document.querySelectorAll('#reader video'))for(const track of video.srcObject?.getTracks?.()||[])track.stop();}
+function barcodeFrameSize(width,height){const scale=Math.min(1,1280/Math.max(width,height));return {width:Math.max(1,Math.round(width*scale)),height:Math.max(1,Math.round(height*scale))};}
+function barcodeDecoder(){
+ if(!barcodeDecoderReady)barcodeDecoderReady=(async()=>{
+  const engine=window.ZXingWASM;if(!engine||!window.WebAssembly)throw Error('BARCODE_ENGINE_UNAVAILABLE');
+  const url=new URL('src/preprod/barcode-assets/zxing_reader.wasm',new URL('./',location.href)),response=await fetch(url,{credentials:'omit',redirect:'error'});
+  if(!response.ok||new URL(response.url).origin!==location.origin)throw Error('BARCODE_ENGINE_RESPONSE');
+  const bytes=await response.arrayBuffer(),hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
+  if(hash!==engine.ZXING_WASM_SHA256)throw Error('BARCODE_ENGINE_INTEGRITY');
+  await engine.prepareZXingModule({overrides:{wasmBinary:bytes,locateFile:path=>{if(path!=='zxing_reader.wasm')throw Error('BARCODE_EXTERNAL_ASSET_FORBIDDEN');return url.href;},print:()=>{},printErr:()=>{}},fireImmediately:true});
+  return engine;
+ })().catch(error=>{barcodeDecoderReady=null;throw error;});
+ return barcodeDecoderReady;
+}
+async function barcodeReadFrames(reader,sequence){
+ let stopped=false,timer=null,legacyScan=null;
+ const cancel=()=>{stopped=true;clearTimeout(timer);};barcodeFrameStop=cancel;
+ const active=()=>!stopped&&!barcodeAccepted&&html5Qr===reader&&barcodeCurrent(sequence);
+ const compatible=()=>{if(legacyScan)reader.scanContext=legacyScan;if(active())document.getElementById('scan-hint').textContent=barcodeWords().compatible;cancel();};
+ try{
+  if(!active())return;
+  const engine=await barcodeDecoder();if(!active())return;
+  // Pinned html5-qrcode 2.3.8 adapter: retain its camera lifecycle and visual
+  // guide, skip only its low-resolution decode hook. Public pause(false) also
+  // displays a paused-camera overlay and can race with its UI initialization.
+  if(typeof reader.scanContext==='function'){legacyScan=reader.scanContext;reader.scanContext=()=>Promise.resolve(false);}
+  const canvas=document.createElement('canvas'),context=canvas.getContext('2d',{willReadFrequently:true});
+  const tick=async()=>{
+   if(!active())return;
+   try{
+    const video=document.querySelector('#reader video');
+    if(video?.readyState>=2&&video.videoWidth&&video.videoHeight){
+     const size=barcodeFrameSize(video.videoWidth,video.videoHeight);if(canvas.width!==size.width||canvas.height!==size.height){canvas.width=size.width;canvas.height=size.height;}
+     // Native video pixels, independent of CSS size and of the visual guide.
+     context.drawImage(video,0,0,canvas.width,canvas.height);
+     const results=await engine.readBarcodes(context.getImageData(0,0,canvas.width,canvas.height),{formats:['EAN-13','UPC-A','EAN-8'],tryHarder:true,maxNumberOfSymbols:1});
+     if(active()){const result=results.find(r=>validBarcode(String(r.text)));if(result){handleScanResult(result.text);return;}}
+    }
+    if(active())timer=setTimeout(tick,120);
+   }catch{compatible();}
+  };void tick();
+ }catch{compatible();}
+}
+function stopScanIfRunning(){
+ // Do not stop a stream before html5-qrcode has finished reading its video
+ // dimensions: an early stop can leave its start() promise unresolved.
+ barcodeAccepted=true;barcodeFrameStop();for(const track of barcodeProbe?.getTracks()||[])track.stop();if(scanRunning)barcodeReleaseTracks();
+ const reader=html5Qr,ready=barcodeStart,previous=barcodeStop;
+ barcodeStop=(async()=>{
+  await previous.catch(()=>{});if(ready)await ready.catch(()=>{});
+  if(reader){try{if(reader.isScanning||scanRunning)await reader.stop();}catch{}try{reader.clear();}catch{}}
+  barcodeReleaseTracks();if(html5Qr===reader){html5Qr=null;barcodeStart=null;scanRunning=false;}
+ })();return barcodeStop;
+}
+function openScanner(){
+ if(!barcodeAllowed())return;
+ barcodeControls();document.getElementById('scan-modal').classList.remove('hidden');return startBarcode();
+}
+async function startBarcode(explicit){
+ if(!barcodeAllowed())return;
+ const sequence=++barcodeSequence;await stopScanIfRunning();
+ if(sequence!==barcodeSequence||document.getElementById('scan-modal').classList.contains('hidden'))return;
+ const w=barcodeWords(),input=document.getElementById('barcode-manual-code');document.getElementById('barcode-result').textContent='';input.value='';input.placeholder=w.code;input.setAttribute('aria-label',w.code);document.getElementById('scan-hint').textContent=w.aim;
+ const manual=document.getElementById('barcode-product-manual');manual.hidden=true;manual.style.display='none';
+ for(const [id,key] of [['barcode-restart','start'],['barcode-stop','stop'],['barcode-check','check'],['barcode-product-manual','manual']])document.getElementById(id).textContent=w[key];
+ if(!window.isSecureContext){document.getElementById('scan-hint').textContent=t('scan_needs_https');return;}
+ if(typeof Html5Qrcode==='undefined'){document.getElementById('scan-hint').textContent=w.error;return;}
+ barcodeAccepted=false;
+ try{
+  const formats=Html5QrcodeSupportedFormats,reader=new Html5Qrcode('reader',{formatsToSupport:[formats.EAN_13,formats.UPC_A,formats.EAN_8],verbose:false});html5Qr=reader;
+  const config={fps:10,disableFlip:true,qrbox:(width,height)=>({width:Math.max(50,Math.floor(Math.min(300,width*.9))),height:Math.max(50,Math.floor(Math.min(160,height*.7)))})},success=code=>{if(barcodeCurrent(sequence))handleScanResult(code);};
+  // videoConstraints overrides html5-qrcode's camera argument: preserve the
+  // selected device/facingMode explicitly, and request HD as a preference only.
+  const startCamera=camera=>reader.start(camera,{...config,videoConstraints:{...camera,width:{ideal:1280},height:{ideal:720}}},success,()=>{});
+  barcodeStart=Promise.resolve().then(async()=>{
+   const camera=await barcodeCameraRequest(sequence,explicit);if(!camera||!barcodeCurrent(sequence))return;
+   try{await startCamera(camera);if(camera.deviceId&&barcodeCurrent(sequence))barcodeCameraPreference(camera.deviceId.exact);}
+   catch(error){
+    if(!camera.deviceId||!/NotFoundError|OverconstrainedError/.test(String(error))||!barcodeCurrent(sequence))throw error;
+    barcodeCameraPreference('');try{reader.clear();}catch{}
+    document.getElementById('scan-hint').textContent=barcodeWords().fallback;
+    await startCamera({facingMode:'environment'});
+   }
   });
+  await barcodeStart;scanRunning=true;
+  for(const video of document.querySelectorAll('#reader video')){video.setAttribute('playsinline','');video.muted=true;}
+  // A newer start/close already scheduled this instance's cleanup. Do not enqueue
+  // an old clear() behind the next camera start.
+  if(sequence!==barcodeSequence||document.getElementById('scan-modal').classList.contains('hidden'))return;
+  void barcodeCameraOptions(sequence);
+  void barcodeReadFrames(reader,sequence);
+ }catch{
+  if(sequence===barcodeSequence){document.getElementById('scan-hint').textContent=w.error;await stopScanIfRunning();}
+ }
 }
-
-function stopScanIfRunning() {
-  if (html5Qr && scanRunning) {
-    scanRunning = false;
-    html5Qr.stop().then(() => html5Qr.clear()).catch(() => {});
-  }
+function closeScanner(){barcodeSequence++;document.getElementById('scan-modal').classList.add('hidden');void stopScanIfRunning();}
+function handleScanResult(value,manual=false){
+ if(!barcodeAllowed()||(!manual&&barcodeAccepted))return;
+ const code=String(value).trim();if(!validBarcode(code)){if(manual)document.getElementById('scan-hint').textContent=barcodeWords().invalid;return;}
+ barcodeAccepted=true;document.getElementById('barcode-manual-code').value=code;
+ const aliases=barcodeAliases(code),matches=products.filter(p=>aliases.includes(String(p.barcode||'').trim()));
+ document.getElementById('barcode-result').textContent=barcodeWords().code+' : '+code+' — '+(matches.length?barcodeWords().found+matches.map(p=>p.name).join(', '):barcodeWords().unknown);
+ const button=document.getElementById('barcode-product-manual');button.hidden=matches.length>0;button.style.display=matches.length?'none':'';
+ document.getElementById('scan-hint').textContent=barcodeWords().stopped;void stopScanIfRunning();if(!matches.length)void lookupScannedBarcode(code,barcodeSequence);
 }
-
-function closeScanner() {
-  document.getElementById('scan-modal').classList.add('hidden');
-  stopScanIfRunning();
-}
-
-function handleScanResult(code) {
-  stopScanIfRunning();
-  document.getElementById('scan-modal').classList.add('hidden');
-  const p = products.find(x => (x.barcode || '') === code);
-  if (p) {
-    showToast('✅ ' + p.name);
-    openQuickModal(p.id);
-  } else {
-    openLinkModal(code);
-  }
-}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){barcodeSequence++;void stopScanIfRunning();}});
+window.addEventListener('pagehide',()=>{barcodeSequence++;void stopScanIfRunning();});
 
 function openLinkModal(code) {
+  if(window.FAMILY_LAB_CONFIG&&!window.FamilyApp?.allowProductAction())return;
   pendingBarcode = code;
   document.getElementById('link-text').innerHTML = t('link_unknown', { code: '<strong>' + escapeHtml(code) + '</strong>' });
   const sel = document.getElementById('link-select');
   sel.innerHTML = products.slice()
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map(p => `<option value="${p.id}">${escapeHtml(p.name)}${p.barcode ? t('link_has_code') : ''}</option>`)
+    .map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}${p.barcode ? t('link_has_code') : ''}</option>`)
     .join('');
   document.getElementById('link-modal').classList.remove('hidden');
 }
@@ -1446,6 +1654,7 @@ function closeLinkModal() {
 }
 
 function linkToExisting() {
+  if(window.FAMILY_LAB_CONFIG){if(!window.FamilyApp?.allowProductAction())return;const id=document.getElementById('link-select').value,code=pendingBarcode;closeLinkModal();return window.FamilyApp.linkBarcode(id,code);}
   const id = document.getElementById('link-select').value;
   const p = products.find(x => x.id === id);
   if (p && pendingBarcode) {
@@ -1460,6 +1669,7 @@ function linkToExisting() {
 }
 
 function createFromScan() {
+  if(window.FAMILY_LAB_CONFIG&&!window.FamilyApp?.allowProductAction())return;
   const code = pendingBarcode;
   closeLinkModal();
   openAddModal();
@@ -1481,11 +1691,13 @@ function checkHash() {
 // ================================================================
 let quickCurrentStock = 0;
 let quickPrevStock = 0;
+let quickRevision = null;
 
 function openQuickModal(id) {
+  if(window.FAMILY_LAB_CONFIG&&!window.FamilyApp?.allowProductAction())return;
   const p = products.find(x => x.id === id);
   if (!p) return;
-  quickEditId = id;
+  quickEditId = id;quickRevision=p.revision;
   quickCurrentStock = p.stock;
   quickPrevStock = p.stock;
   document.getElementById('quick-modal-title').textContent = '📦 ' + p.name;
@@ -1500,6 +1712,7 @@ function quickAdjust(delta) {
 }
 
 function saveQuickUpdate() {
+  if(window.FAMILY_LAB_CONFIG){document.getElementById('quick-modal').classList.add('hidden');return window.FamilyApp?.stockCorrection(quickEditId,quickCurrentStock,quickRevision).catch(error=>window.FamilyApp.reportError(error));}
   const p = products.find(x => x.id === quickEditId);
   if (!p) return;
   const increase = quickCurrentStock - quickPrevStock;
@@ -1519,6 +1732,7 @@ function saveQuickUpdate() {
 // AJUSTEMENT DU STOCK (+1/-1) depuis les boutons de la carte
 // ================================================================
 function adjustStock(id, delta) {
+  if(window.FAMILY_LAB_CONFIG){if(!window.FamilyApp?.allowProductAction())return;beginStockInteraction();return window.FamilyApp.quickAdjust(id,delta).catch(error=>window.FamilyApp.reportError(error));}
   const p = products.find(x => x.id === id);
   if (!p) return;
   p.stock = Math.max(0, p.stock + delta);
@@ -1532,7 +1746,8 @@ function adjustStock(id, delta) {
 // MODAL AJOUT/MODIFICATION
 // ================================================================
 function openAddModal() {
-  editingId = null;
+  if(window.FAMILY_LAB_CONFIG&&!window.FamilyApp?.allowProductAction())return;
+  editingId = null;editingRevision=null;
   document.getElementById('modal-title').textContent = t('modal_add_title');
   document.getElementById('modal-save-btn').textContent = t('btn_add');
   ['f-name','f-notes','f-barcode'].forEach(id => document.getElementById(id).value = '');
@@ -1549,9 +1764,10 @@ function openAddModal() {
 }
 
 function openEditModal(id) {
+  if(window.FAMILY_LAB_CONFIG&&!window.FamilyApp?.allowProductAction())return;
   const p = products.find(x => x.id === id);
   if (!p) return;
-  editingId = id;
+  editingId = id;editingRevision=p.revision;
   document.getElementById('modal-title').textContent = t('modal_edit_title');
   document.getElementById('modal-save-btn').textContent = t('btn_save');
   document.getElementById('f-name').value = p.name;
@@ -1569,6 +1785,7 @@ function openEditModal(id) {
 }
 
 function saveProduct() {
+  if(window.FAMILY_LAB_CONFIG)return window.FamilyApp?.saveProduct(editingId).catch(error=>window.FamilyApp.reportError(error));
   const name = document.getElementById('f-name').value.trim();
   if (!name) { alert(t('name_required')); return; }
 
@@ -1604,6 +1821,7 @@ function saveProduct() {
 }
 
 function deleteProduct(id) {
+  if(window.FAMILY_LAB_CONFIG){if(!window.FamilyApp?.allowProductAction())return;return window.FamilyApp.archive(id).catch(error=>window.FamilyApp.reportError(error));}
   const p = products.find(x => x.id === id);
   if (!p) return;
   if (!confirm(t('delete_confirm', { name: p.name }))) return;
@@ -1622,15 +1840,21 @@ function closeModal() {
 // ================================================================
 // NAVIGATION PAR ONGLETS
 // ================================================================
-const TAB_LIST = ['inventory','shopping','qr','stats'];
+const TAB_LIST = ['inventory','shopping','qr','stats','more'];
 function switchTab(tab) {
+  if (!TAB_LIST.includes(tab)) return;
   currentTab = tab;
   TAB_LIST.forEach(t2 => {
     document.getElementById('tab-' + t2).style.display = t2 === tab ? '' : 'none';
   });
-  document.querySelectorAll('.tab').forEach((el, i) => {
-    el.classList.toggle('active', TAB_LIST[i] === tab);
+  const navTab = tab === 'stats' ? 'more' : tab;
+  document.querySelectorAll('.bottom-tabs .tab').forEach(el => {
+    const active = el.dataset.tab === navTab;
+    el.classList.toggle('active', active);
+    if (active) el.setAttribute('aria-current', 'page');
+    else el.removeAttribute('aria-current');
   });
+  window.scrollTo(0, 0);
   updateMicFloat();
   if (tab === 'shopping') setShoppingView(shoppingView);
   if (tab === 'qr') renderQR();
@@ -1676,6 +1900,7 @@ function showToast(msg) {
 // EXPORT / IMPORT JSON
 // ================================================================
 function exportData() {
+  if(window.FAMILY_LAB_CONFIG)return window.FamilyApp?.backup();
   const dateStr = new Date().toISOString().slice(0, 10);
   const blob = new Blob([JSON.stringify(products, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1690,10 +1915,12 @@ function exportData() {
 }
 
 function triggerImport() {
+  if(window.FAMILY_LAB_CONFIG)return window.FamilyApp?.restore();
   document.getElementById('import-file').click();
 }
 
 function handleImportFile(input) {
+  if(window.FAMILY_LAB_CONFIG)return;
   const file = input.files && input.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -1788,6 +2015,8 @@ function enterShoppingMode() {
 }
 
 function renderShoppingMode() {
+  if(window.FamilyApp?.renderShop()) return;
+  if (window.ManualShopping?.renderShop()) return;
   const container = document.getElementById('shopping-mode-content');
   const items = shopSnapshot.map(id => products.find(p => p.id === id)).filter(Boolean);
 
@@ -1856,18 +2085,19 @@ function renderShopCardsFlat(items, suggestedIds) {
       else if (st === 'medium') badge = '<span class="status-badge badge-medium">' + t('badge_low') + '</span>';
     }
     return `
-      <div class="shop-mode-card ${cls}" id="sm-${p.id}" data-name="${escapeHtml(p.name.toLowerCase())}">
+      <div class="shop-mode-card ${cls}" id="sm-${escapeHtml(p.id)}" data-name="${escapeHtml(p.name.toLowerCase())}">
         <div class="sm-info">
           <div class="sm-name">${escapeHtml(p.name)} ${badge}</div>
           <div class="sm-qty">${p.stock} → <strong>${p.target}</strong> ${escapeHtml(p.unit)}</div>
         </div>
-        <button class="btn-buy" onclick="openBuyModal('${p.id}')">${isDone ? '✓' : '✅'} ${isDone ? '' : t('buy_title')}</button>
+        <button class="btn-buy" data-product-action="buy" data-product-id="${escapeHtml(p.id)}">${isDone ? '✓' : '✅'} ${isDone ? '' : t('buy_title')}</button>
       </div>`;
   }).join('');
 }
 
 let buyingId = null;
 function openBuyModal(id) {
+  if(window.FAMILY_LAB_CONFIG){if(!window.FamilyApp?.allowProductAction())return;return window.FamilyApp.openBuy(id);}
   const p = products.find(x => x.id === id);
   if (!p) return;
   buyingId = id;
@@ -1878,6 +2108,7 @@ function openBuyModal(id) {
 
 // Confirme l'achat : stock = target, lastRestocked, historique (feature #4)
 function confirmBuy() {
+  if(window.FAMILY_LAB_CONFIG)return;
   const p = products.find(x => x.id === buyingId);
   if (!p) return;
   p.stock = p.target;
@@ -1897,6 +2128,8 @@ function confirmBuy() {
 // IMPRESSION
 // ================================================================
 function buildPrintArea() {
+  if(window.FamilyApp?.buildPrint()) return;
+  if (window.ManualShopping?.buildPrint()) return;
   const area = document.getElementById('print-area');
   const toShop = products.filter(p => getStatus(p) !== 'ok');
   const dateStr = new Date().toLocaleDateString(localeOf(), {
@@ -1925,7 +2158,7 @@ function buildPrintArea() {
     byAisle[aisle]
       .sort((a, b) => (getStatus(a) === 'low' ? 0 : 1) - (getStatus(b) === 'low' ? 0 : 1) || a.name.localeCompare(b.name))
       .forEach(p => {
-        const need = Math.max(0, p.target - p.stock);
+        const need = InventoryStock.quantityNeeded(p);
         html += `<div class="print-item"><span>${escapeHtml(p.name)}${need > 0 ? ' <span class="print-qty">×' + need + ' ' + escapeHtml(p.unit) + '</span>' : ''}</span></div>`;
       });
     html += '</div>';
@@ -1945,7 +2178,7 @@ function renderStats() {
   const sel = document.getElementById('stats-select');
   const sorted = products.slice().sort((a, b) => a.name.localeCompare(b.name));
   const prev = sel.value;
-  sel.innerHTML = sorted.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  sel.innerHTML = sorted.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
   if (sorted.find(p => p.id === prev)) sel.value = prev;
   statsSelectedId = sel.value || (sorted[0] && sorted[0].id) || null;
   if (statsSelectedId) sel.value = statsSelectedId;
@@ -1954,6 +2187,7 @@ function renderStats() {
   const canvas = document.getElementById('stats-canvas');
   const p = products.find(x => x.id === statsSelectedId);
 
+  window.FamilyApp?.renderStatistics();
   if (!p) {
     info.textContent = t('stats_no_product');
     clearCanvas(canvas);
@@ -2084,6 +2318,7 @@ function bindMic(btn, target) {
 }
 
 function startVoice(target, btn) {
+  if(!window.FamilyApp?.allowProductAction())return;
   if (!SpeechRec || recognition) return;
   voiceTarget = target;
   recognition = new SpeechRec();
@@ -2132,9 +2367,9 @@ function handleVoiceResult(text) {
 // Surligne le produit dicté dans la liste "Faire les courses" (feature #5.5)
 function voiceHighlightShop(text) {
   const q = text.toLowerCase();
-  const cards = [...document.querySelectorAll('#shopping-mode-content .shop-mode-card')];
-  let hit = cards.find(c => (c.dataset.name || '').includes(q))
-        || cards.find(c => q.split(/\s+/).some(w => w.length > 2 && (c.dataset.name || '').includes(w)));
+  const cards = [...document.querySelectorAll('#shopping-mode-content .shop-mode-card, #shopping-mode-content .family-row')];
+  let hit = cards.find(c => (c.dataset.name || c.querySelector('strong')?.textContent?.toLowerCase() || '').includes(q))
+        || cards.find(c => q.split(/\s+/).some(w => w.length > 2 && (c.dataset.name || c.querySelector('strong')?.textContent?.toLowerCase() || '').includes(w)));
   if (hit) {
     cards.forEach(c => c.classList.remove('voice-hit'));
     hit.classList.add('voice-hit');
@@ -2216,6 +2451,7 @@ function showOffCredit() { document.getElementById('off-credit').classList.add('
 
 // A) Lookup par code-barres
 function offBarcodeLookup() {
+  if(window.FAMILY_LAB_CONFIG&&!window.FamilyApp?.externalLookup())return;
   const barcode = document.getElementById('f-barcode').value.trim();
   const nameEmpty = !document.getElementById('f-name').value.trim();
   if (!barcode || !nameEmpty) return;          // déclenché seulement si nom vide
@@ -2259,6 +2495,7 @@ function offBarcodeLookup() {
 
 // B) Autocomplete par nom
 function offNameInput() {
+  if(window.FAMILY_LAB_CONFIG&&!window.FamilyApp?.externalLookup())return;
   if (offFromSelection) { offFromSelection = false; return; }
   clearTimeout(offNameTimer);
   const q = document.getElementById('f-name').value.trim();
@@ -2267,6 +2504,7 @@ function offNameInput() {
 }
 
 function offSearchName(q) {
+  if(window.FAMILY_LAB_CONFIG&&!window.FamilyApp?.externalLookup())return;
   const url = `https://world.openfoodfacts.org/cgi/search.pl`
     + `?search_terms=${encodeURIComponent(q)}&search_simple=1&json=1&page_size=6`
     + `&fields=product_name,product_name_fr,product_name_de,brands,code,categories_tags,quantity`
@@ -2344,6 +2582,8 @@ function saveSettings() {
 // Change la langue à chaud (sans rechargement) — feature #6.5
 function setLang(lang) {
   currentLang = lang;
+  window.FamilyApp?.refresh?.();
+  document.dispatchEvent(new Event('inventaire-language'));
   localStorage.setItem('app-lang', lang);
   applyTranslations();
   renderCurrent();
@@ -2391,6 +2631,8 @@ function firebaseConfigured() {
 
 // Démarre Firebase : init → AUTH ANONYME → persistance hors-ligne → écoute
 function startFirebase() {
+  throw new Error('PRODUCTION_TRANSPORT_NOT_AUTHORIZED');
+  /* Code historique conservé pour audit, désactivé en phase 4.
   try {
     firebase.initializeApp(firebaseConfig);
     fb.db = firebase.firestore();
@@ -2414,6 +2656,9 @@ function startFirebase() {
     console.warn('Firebase KO → mode local :', e);
     localFallback();
   }
+}
+
+*/
 }
 
 function subscribeFirebase() {
@@ -2470,6 +2715,8 @@ function localFallback() {
 }
 
 function registerSW() {
+  if(window.FAMILY_LAB_CONFIG?.mode==='production')return;
+  if(window.FAMILY_LAB_CONFIG?.mode==='ui-fixture')return;
   if (!('serviceWorker' in navigator)) return;
   if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
   fetch('sw.js', { method: 'HEAD' })
@@ -2479,9 +2726,50 @@ function registerSW() {
 
 // Démarre la synchro (Firebase) ou le mode local, une fois l'onboarding fait
 function bootData() {
-  if (firebaseConfigured()) startFirebase();
-  else localFallback();
+  // Phase 4 : aucune activation du transport historique de production.
+  if(window.FAMILY_LAB_CONFIG)return;
+  localFallback();
 }
+
+// Les identifiants restent des données DOM, jamais du code JavaScript généré.
+document.addEventListener('pointerdown',event=>{if(window.FAMILY_LAB_CONFIG&&event.target.closest('button[data-product-action="stock"]')){stockPointers.add(event.pointerId);beginStockInteraction();}},true);
+for(const type of ['pointerup','pointercancel'])window.addEventListener(type,event=>{if(stockPointers.delete(event.pointerId))beginStockInteraction();},true);
+window.addEventListener('blur',()=>{stockPointers.clear();});
+document.addEventListener('click',event=>{
+  const button=event.target.closest('button[data-product-action]');if(!button)return;
+  const id=button.dataset.productId;
+  if(button.dataset.productAction==='stock')adjustStock(id,Number(button.dataset.delta));
+  else if(button.dataset.productAction==='history')openProductHistory(id);
+  else if(button.dataset.productAction==='edit')openEditModal(id);
+  else if(button.dataset.productAction==='delete')deleteProduct(id);
+  else if(button.dataset.productAction==='buy')openBuyModal(id);
+});
+document.addEventListener('change',event=>{
+  if(event.target.matches('input[data-product-action="check"]'))toggleCheck(event.target.dataset.productId,event.target);
+});
+
+// Adaptateur de lecture : aucun accès en écriture aux produits depuis les ajouts.
+window.manualShoppingHost = {
+  products: () => JSON.parse(JSON.stringify(products)),
+  language: () => currentLang,
+  render: () => renderCurrent(),
+  aisleIndex, aisleLabel,
+  buyLabel: () => t('buy_title'),
+  copyLabel: () => t('btn_copy'),
+  printLabel: () => t('btn_print'),
+  shoppingContext: () => ({view: shoppingView, snapshot: [...shopSnapshot], done: [...shopDone]}),
+  openBuy: id => openBuyModal(id),
+  autoChecks: () => { try { return JSON.parse(localStorage.getItem('shopping-checked') || '[]'); } catch { return []; } },
+  toggleCheck: (id, cb) => {
+    let checked; try { checked = JSON.parse(localStorage.getItem('shopping-checked') || '[]'); } catch { checked = []; }
+    checked = checked.filter(value => value !== id);
+    if (cb.checked) checked.push(id);
+    localStorage.setItem('shopping-checked', JSON.stringify(checked));
+    cb.closest('.shopping-item')?.classList.toggle('checked', cb.checked);
+  }
+};
+
+window.familyHost={quickRenderDeferred,toast:showToast,language:()=>currentLang,editRevision:()=>editingRevision,selectedStats:()=>statsSelectedId,replace:list=>{products=list;},render:()=>renderCurrent(),closeProduct:()=>closeModal()};
 
 // ================================================================
 // INITIALISATION
@@ -2502,5 +2790,5 @@ if (!localStorage.getItem('app-lang')) {
   bootData();
 }
 </script>
-</body>
+<script src="src/production/open-food-facts.js"></script></body>
 </html>
