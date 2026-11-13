@@ -1,8 +1,8 @@
 {
   "format": "inventaire-production-release",
   "version": 1,
-  "id": "ac1ad61674b68bdbdf1a60af4eb737e5afeed984e6979ba6080d51bda02db0e5",
-  "sourceCommit": "7e8b99440b5123a500d07d65b2fb627ea71672e8",
+  "id": "6dabc9e63785eea7f81a579f041c142ff1c4eeab7e42024a735dd778b4cfccd4",
+  "sourceCommit": "9fef6311cb75933cc45970ad33a44126da393460",
   "sourceInputsDirty": false,
   "publishable": true,
   "projectId": "inventaire-maison-8fd95",
@@ -12,7 +12,7 @@
   "basePath": "/inventaire-app/",
   "scannerSource": "b571536",
   "files": {
-    "index.html": "96228bdb7213acbed65aa98a5704c53dc422c4769f80ede21ea7d61c0b89bd08",
+    "index.html": "26eefa810fee956da996ac05613c7289bc3ea3d192f14ba936530c74d87f2ee7",
     "manifest.json": "d0741ee3173af84862d870b4b336a170baeaa164b2314dca2a8347fc40373d54",
     "bundle-inputs.json": "bea28558ae5c57c68122176eb6b970a61a8528348862c161413de51fe8afa5b4",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

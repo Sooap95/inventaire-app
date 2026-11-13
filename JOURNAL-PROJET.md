@@ -4,7 +4,8 @@
 - Sauvegarde privée vérifiée avant conversion. Le résultat `BACKEND_READY` fourni par le propriétaire confirme 37 produits convertis par un lot atomique de 38 écritures. Identifiants, quantités, unités, champs et historiques préservés ; aucun jeu de données fictif importé dans la base familiale.
 - Règles familiales fermées, autorisation administrative des profils anonymes, opérations idempotentes, conflits explicites et intentions hors ligne.
 - Design Art déco FR/DE, +/− immédiats, scanner rapide `b571536`, Open Food Facts (nom, marque, catégorie), QR local et recherche vocale historique lorsqu’elle est disponible.
-- Code source de référence `7e8b994` ; contrôles locaux : 182 unitaires, 73 de sécurité sur émulateurs, 26 navigateur, 14 de conversion et 18 de sauvegarde. Aucun essai Chromium présenté comme un essai sur téléphone réel.
+- Référent HTTP limité à l’origine GitHub pour respecter la clé Firebase restreinte, sans chemin ni requête ; OFF reste sans référent. Aucune restriction serveur modifiée.
+- Code source de référence `9fef631` ; contrôles locaux : 182 unitaires, 73 de sécurité sur émulateurs, 27 navigateur, 14 de conversion et 18 de sauvegarde. Aucun essai Chromium présenté comme un essai sur téléphone réel.
 - La première autorisation de chaque profil reste une opération du propriétaire. Voir [le guide actuel](VERSION-V02.md). Après mise à jour, fermer les anciens onglets Inventaire puis rouvrir, sans effacer les données du navigateur.
 
 ---
@@ -68,14 +69,14 @@ seulement **en conditions réelles** (téléphone + site déployé).
 
 | Quoi | Comment | Pourquoi |
 |---|---|---|
-| **Déploiement Git** | Le dépôt Git a été (re)créé directement dans le **nouveau dossier de travail `D:\inventaire-app`** (l'utilisateur ne voulait pas de dépôt Git dans `Downloads`). `git init` → `add` → `commit` → `remote add origin` → `push` vers `github.com/Sooap95/inventaire-app`. | Garder le dossier `Downloads` propre ; centraliser la source du déploiement sur `D:`. |
+| **Déploiement Git** | Le dépôt Git a été (re)créé directement dans le **nouveau dossier de travail `DOSSIER_LOCAL_DU_DEPOT`** (l'utilisateur ne voulait pas de dépôt Git dans `Downloads`). `git init` → `add` → `commit` → `remote add origin` → `push` vers `github.com/Sooap95/inventaire-app`. | Garder le dossier `Downloads` propre ; centraliser la source du déploiement sur `D:`. |
 | **Authentification GitHub** | Le mot de passe de compte est **refusé** par GitHub pour Git : il faut un **Personal Access Token** (classic, scope `repo`) saisi à la place du mot de passe. | GitHub a supprimé l'auth par mot de passe pour les opérations Git (sécurité). |
 | **Bump du Service Worker** | `CACHE` dans `sw.js` incrémenté (`v1` → `v2` → `v3`) à chaque déploiement. | Sans ça, les téléphones (PWA installée) gardent l'ancienne version en cache et ne voient pas les nouveautés. |
 | **Correctif Open Food Facts sur mobile** | OFF s'affichait « indisponible » sur le site déployé alors que l'API répond bien (vérifié : `HTTP 200`, `Access-Control-Allow-Origin: *`). Deux causes corrigées : (1) on **retire l'en-tête `User-Agent`** des `fetch()` — les navigateurs **interdisent** de le fixer depuis une page, ce qui faisait échouer la requête ; (2) on **exclut `openfoodfacts.org` du Service Worker** (comme Firestore) pour qu'il n'intercepte plus l'appel. Ajout d'un `console.warn` dans les `catch` pour diagnostiquer un éventuel futur échec. | L'en-tête `User-Agent` n'était utile que pour un client serveur ; en navigateur il est inutile (le navigateur envoie le sien) et nuisible. Le SW ne doit pas mettre en cache / perturber une API tierce. |
 
 ### Décisions / notes
 
-- **Nouvelle source de vérité : `D:\inventaire-app`.** La copie dans `Downloads` est désormais **obsolète** — toute modification future se fait dans `D:`.
+- **Nouvelle source de vérité : `DOSSIER_LOCAL_DU_DEPOT`.** La copie dans `Downloads` est désormais **obsolète** — toute modification future se fait dans `D:`.
 - **Piège à retenir :** une réécriture complète de `index.html` réinitialise le bloc `firebaseConfig` en placeholder `TON_…`. Toujours **recoller la vraie config Firebase** avant de redéployer.
 - Si OFF venait à re-bloquer : ce ne serait plus le code mais l'appareil (bloqueur de pub type Brave/uBlock, VPN/filtrage). Le `console.warn` ajouté donne la raison exacte (F12 → Console).
 
@@ -84,7 +85,7 @@ seulement **en conditions réelles** (téléphone + site déployé).
 ## 3. Décisions structurantes et raisons
 
 - **Un seul fichier `.html` conservé** comme cœur de l'appli (pas de framework, pas de build) — pour rester simple à maintenir et modifiable directement dans un éditeur de texte.
-- **Hébergement : GitHub Pages**, plutôt que rester en local (`file://`). Raison double : le scan caméra exige un contexte sécurisé (https), et un Service Worker basé sur une Blob URL (essayé d'abord en local) est rejeté par le navigateur — il fallait un vrai fichier servi en http(s).
+- **Hébergement : GitHub Pages**, plutôt que rester en local (`filDOSSIER_LOCAL_DU_DEPOT`). Raison double : le scan caméra exige un contexte sécurisé (https), et un Service Worker basé sur une Blob URL (essayé d'abord en local) est rejeté par le navigateur — il fallait un vrai fichier servi en http(s).
 - **Synchro : Firebase Firestore**, choisi parmi 3 options proposées (Firebase / Supabase / Export-Import manuel uniquement). Firestore offre du temps réel "prêt à l'emploi" et un niveau gratuit largement suffisant pour un usage familial.
 - **Un document Firestore par produit** (plutôt qu'un seul document contenant tout l'inventaire) — pour que deux personnes puissent modifier deux produits différents en même temps sans qu'une écriture n'écrase l'autre. Seule limite acceptée : si deux personnes modifient *le même* produit à la même seconde, la dernière écriture gagne.
 - **Règles Firestore avec authentification anonyme** (`allow read, write: if request.auth != null`). Au départ ouvertes (`if true`) pour aller au plus simple, elles ont été durcies dans la session « 6 fonctionnalités » : l'auth anonyme protège l'inventaire d'un inconnu qui devinerait l'URL de la base, sans imposer de login aux utilisateurs.
@@ -95,8 +96,8 @@ seulement **en conditions réelles** (téléphone + site déployé).
 
 ## 4. Fichiers livrés
 
-Dossier de travail / dépôt Git : **`D:\inventaire-app\`** (poussé sur
-`github.com/Sooap95/inventaire-app`). ⚠️ L'ancienne copie `C:\Users\konig\Downloads\inventaire-app\`
+Dossier de travail / dépôt Git : **`DOSSIER_LOCAL_DU_DEPOT`** (poussé sur
+`github.com/Sooap95/inventaire-app`). ⚠️ L'ancienne copie `DOSSIER_LOCAL_DU_DEPOT`
 est **obsolète** — ne plus l'éditer.
 
 - `index.html` — l'application complète.

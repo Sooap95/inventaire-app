@@ -1,12 +1,12 @@
 # Inventaire Maison V0.2
 
-Application familiale : **https://sooap95.github.io/inventaire-app/**.
+Application familiale : **httpDOSSIER_LOCAL_DU_DEPOT
 
 La V0.2 conserve la base familiale et les identifiants produits, avec le design Art déco FR/DE, les ajustements +/− immédiats, le scanner rapide et Open Food Facts. Les courses manuelles, les doublons explicites, les achats partiels et les intentions hors ligne utilisent le journal familial sécurisé.
 
 **Guide actuel : [Utiliser la V0.2](VERSION-V02.md).** L’identification anonyme est automatique, mais chaque profil navigateur doit être autorisé une première fois par le propriétaire dans `members`. Aucun auto-enrôlement et aucun mot de passe quotidien.
 
-Le code livré ici est la distribution statique compilée du commit de développement `7e8b994`. Le code source, les tests et le dossier de conversion sont conservés sur la branche de développement et dans l’archive complète remise au propriétaire. Ne pas modifier seulement le bundle compilé pour une évolution métier.
+Le code livré ici est la distribution statique compilée du commit de développement `9fef631`. Le code source, les tests et le dossier de conversion sont conservés sur la branche de développement et dans l’archive complète remise au propriétaire. Ne pas modifier seulement le bundle compilé pour une évolution métier.
 
 ---
 
@@ -35,7 +35,7 @@ et **auto-complétion produit** via Open Food Facts. Voir « Fonctionnalités »
 | `README.md` | Ce guide. |
 
 > ⚠️ **Le scan de code-barres et la synchro nécessitent https.** Ouvrir `index.html`
-> directement (`file://`) fonctionne en **mode local** (chacun son inventaire, sans
+> directement (`filDOSSIER_LOCAL_DU_DEPOT`) fonctionne en **mode local** (chacun son inventaire, sans
 > caméra). Pour tout activer, il faut déployer sur GitHub Pages (gratuit, https inclus).
 
 ---
@@ -44,29 +44,29 @@ et **auto-complétion produit** via Open Food Facts. Voir « Fonctionnalités »
 
 ### Étape 1 — Mettre les fichiers sur GitHub
 
-1. Crée un compte sur https://github.com (gratuit) si besoin.
+1. Crée un compte sur httpDOSSIER_LOCAL_DU_DEPOT
 2. Crée un nouveau dépôt **public** (ex. `inventaire-maison`).
 3. Depuis ce dossier, en ligne de commande :
 
    ```bash
-   cd "C:\Users\konig\Downloads\inventaire-app"
+   cd "DOSSIER_LOCAL_DU_DEPOT"
    git init
    git add .
    git commit -m "Inventaire maison"
    git branch -M main
-   git remote add origin https://github.com/TON-PSEUDO/inventaire-maison.git
+   git remote add origin httpDOSSIER_LOCAL_DU_DEPOT
    git push -u origin main
    ```
 
 4. Sur GitHub : **Settings → Pages → Source : `main` / `/ (root)` → Save**.
 5. Au bout d'1-2 min, ton appli est en ligne sur :
-   `https://TON-PSEUDO.github.io/inventaire-maison/`
+   `httpDOSSIER_LOCAL_DU_DEPOT`
 
 À ce stade l'appli marche déjà (mode local sur chaque téléphone). On active maintenant la synchro.
 
 ### Étape 2 — Créer la base Firebase (synchro temps réel)
 
-1. Va sur https://console.firebase.google.com → **Ajouter un projet** (ex. `inventaire-maison`).
+1. Va sur httpDOSSIER_LOCAL_DU_DEPOT`inventaire-maison`).
    Tu peux désactiver Google Analytics (inutile ici).
 2. Dans le menu **Build → Firestore Database → Créer une base de données**.
    - Choisis l'emplacement **`eur3 (europe-west)`** (proche de la Suisse).
@@ -131,7 +131,7 @@ Les 3 téléphones partagent maintenant le même inventaire en direct. 🎉
 
 ## 📲 Installer sur les 3 téléphones
 
-Ouvre `https://TON-PSEUDO.github.io/inventaire-maison/` dans le navigateur, puis :
+Ouvre `httpDOSSIER_LOCAL_DU_DEPOT` dans le navigateur, puis :
 
 - **iPhone (Safari)** : bouton Partager → *Sur l'écran d'accueil*.
 - **Android (Chrome)** : menu ⋮ → *Installer l'application* / *Ajouter à l'écran d'accueil*.
