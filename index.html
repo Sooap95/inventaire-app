@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://world.openfoodfacts.org; worker-src 'self'; manifest-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><script>window.PRODUCTION_BINDING={"projectId":"inventaire-maison-8fd95","projectNumber":"272639034410","databaseId":"(default)","location":"eur3","origin":"https://sooap95.github.io","basePath":"/inventaire-app/","firebase":{"apiKey":"AIzaSyAfzXb6eSKaFXPc7kkLnXfmHcO1kvpuCSk","authDomain":"inventaire-maison-8fd95.firebaseapp.com","projectId":"inventaire-maison-8fd95","storageBucket":"inventaire-maison-8fd95.firebasestorage.app","messagingSenderId":"272639034410","appId":"1:272639034410:web:18c837ff78c3eefa5faf53"}};window.FAMILY_LAB_CONFIG={mode:"production"};</script>
+<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.openfoodfacts.org https://images.openbeautyfacts.org https://images.openproductsfacts.org https://images.openpetfoodfacts.org https://static.openfoodfacts.org https://static.openbeautyfacts.org https://static.openproductsfacts.org https://static.openpetfoodfacts.org; media-src 'self' blob:; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://world.openfoodfacts.org https://world.openbeautyfacts.org https://world.openproductsfacts.org https://world.openpetfoodfacts.org; worker-src 'self'; manifest-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><script>window.PRODUCTION_BINDING={"projectId":"inventaire-maison-8fd95","projectNumber":"272639034410","databaseId":"(default)","location":"eur3","origin":"https://sooap95.github.io","basePath":"/inventaire-app/","firebase":{"apiKey":"AIzaSyAfzXb6eSKaFXPc7kkLnXfmHcO1kvpuCSk","authDomain":"inventaire-maison-8fd95.firebaseapp.com","projectId":"inventaire-maison-8fd95","storageBucket":"inventaire-maison-8fd95.firebasestorage.app","messagingSenderId":"272639034410","appId":"1:272639034410:web:18c837ff78c3eefa5faf53"}};window.FAMILY_LAB_CONFIG={mode:"production"};</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Inventaire Maison</title>
@@ -631,6 +631,8 @@
         <input type="text" id="f-barcode" data-i18n-ph="f_barcode_ph" placeholder="EAN scanné ou saisi" inputmode="numeric">
         <div class="off-spinner" id="off-spinner"></div>
       </div>
+      <img id="product-photo" class="product-photo" alt="" hidden>
+      <p id="product-photo-credit" class="photo-credit"></p>
       <div class="off-banner" id="off-banner"></div>
       <div class="off-credit" id="off-credit">🌿 <a href="https://openfoodfacts.org" target="_blank" rel="noopener" data-i18n="off_credit">Données Open Food Facts</a></div>
     </div>
@@ -681,21 +683,25 @@
   <div class="modal">
     <div class="modal-header">
       <h3 id="quick-modal-title" data-i18n="quick_title">Mise à jour rapide</h3>
-      <button class="modal-close" onclick="document.getElementById('quick-modal').classList.add('hidden')">✕</button>
+      <button class="modal-close" onclick="cancelQuickUpdate()">✕</button>
     </div>
     <div class="modal-body">
       <div style="text-align:center">
+        <img id="quick-photo" class="quick-photo" alt="" hidden>
+        <p id="quick-photo-credit" class="photo-credit"></p>
         <div style="font-size:14px;color:var(--muted);margin-bottom:10px" data-i18n="quick_current">Stock actuel</div>
         <div class="stock-control" style="justify-content:center">
-          <button class="stock-btn" style="width:40px;height:40px;font-size:20px" onclick="quickAdjust(-1)">−</button>
-          <span class="stock-value" id="quick-stock-display" style="font-size:32px;min-width:60px">0</span>
-          <button class="stock-btn" style="width:40px;height:40px;font-size:20px" onclick="quickAdjust(1)">+</button>
+          <button type="button" class="stock-btn" style="width:40px;height:40px;font-size:20px" onclick="quickAdjust(-1)" aria-label="−">−</button>
+          <button type="button" class="stock-value" id="quick-stock-display" style="font-size:32px;min-width:60px">0</button>
+          <button type="button" class="stock-btn" style="width:40px;height:40px;font-size:20px" onclick="quickAdjust(1)" aria-label="+">+</button>
         </div>
+        <select id="quick-pick" hidden></select>
+        <p id="quick-note" class="photo-credit"></p>
         <div style="font-size:12px;color:var(--muted);margin-top:8px" id="quick-unit-display"></div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="document.getElementById('quick-modal').classList.add('hidden')" data-i18n="btn_cancel">Annuler</button>
+      <button class="btn btn-outline" onclick="cancelQuickUpdate()" data-i18n="btn_cancel">Annuler</button>
       <button class="btn btn-accent" onclick="saveQuickUpdate()" data-i18n="btn_save">Enregistrer</button>
     </div>
   </div>
@@ -1445,7 +1451,7 @@ function renderQR() {
 // ================================================================
 // Built into the historical scanner section of the preproduction HTML only.
 // Same html5-qrcode API; results stay local until an explicit product form save.
-let html5Qr=null,scanRunning=false,pendingBarcode=null;
+let html5Qr=null,scanRunning=false,pendingBarcode=null,barcodeHoldCode='',barcodeHoldMisses=0;
 let barcodeStart=null,barcodeStop=Promise.resolve(),barcodeSequence=0,barcodeAccepted=false;
 let barcodeProbe=null;
 let barcodeDecoderReady=null,barcodeFrameStop=()=>{};
@@ -1564,7 +1570,7 @@ async function barcodeReadFrames(reader,sequence){
      // Native video pixels, independent of CSS size and of the visual guide.
      context.drawImage(video,0,0,canvas.width,canvas.height);
      const results=await engine.readBarcodes(context.getImageData(0,0,canvas.width,canvas.height),{formats:['EAN-13','UPC-A','EAN-8'],tryHarder:true,maxNumberOfSymbols:1});
-     if(active()){const result=results.find(r=>validBarcode(String(r.text)));if(result){handleScanResult(result.text);return;}}
+     if(active()){const result=results.find(r=>validBarcode(String(r.text)));const text=result?String(result.text):'';if(text&&barcodeHoldCode&&barcodeAliases(text).includes(barcodeHoldCode)){timer=setTimeout(tick,120);return;}if(!text&&barcodeHoldCode){barcodeHoldMisses++;if(barcodeHoldMisses<8){timer=setTimeout(tick,120);return;}barcodeHoldCode='';barcodeHoldMisses=0;}if(text){handleScanResult(text);return;}}
     }
     if(active())timer=setTimeout(tick,120);
    }catch{compatible();}
@@ -1709,6 +1715,10 @@ function openQuickModal(id) {
 function quickAdjust(delta) {
   quickCurrentStock = Math.max(0, quickCurrentStock + delta);
   document.getElementById('quick-stock-display').textContent = quickCurrentStock;
+}
+
+function cancelQuickUpdate() {
+  document.getElementById('quick-modal').classList.add('hidden');
 }
 
 function saveQuickUpdate() {
@@ -1868,19 +1878,23 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
       // Les modales d'onboarding ne se ferment pas au clic extérieur
       if (overlay.id === 'lang-modal' || overlay.id === 'name-modal') return;
       overlay.classList.add('hidden');
-      stopScanIfRunning();
+      if (typeof scanOverlayDismissed === 'function') scanOverlayDismissed(overlay.id);
+      else stopScanIfRunning();
     }
   });
 });
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-overlay').forEach(m => {
-      if (m.id === 'lang-modal' || m.id === 'name-modal') return;
-      m.classList.add('hidden');
-    });
+    const family = document.getElementById('family-modal');
+    if (family && (e.target === family || family.contains(e.target))) return;
+    const open = [...document.querySelectorAll('.modal-overlay')].filter(m => !m.classList.contains('hidden') && m.id !== 'lang-modal' && m.id !== 'name-modal');
+    const top = open.at(-1);
+    if (!top) return;
+    top.classList.add('hidden');
     closeOffDropdown();
-    stopScanIfRunning();
+    if (typeof scanOverlayDismissed === 'function') scanOverlayDismissed(top.id);
+    else stopScanIfRunning();
   }
 });
 
@@ -2770,6 +2784,19 @@ window.manualShoppingHost = {
 };
 
 window.familyHost={quickRenderDeferred,toast:showToast,language:()=>currentLang,editRevision:()=>editingRevision,selectedStats:()=>statsSelectedId,replace:list=>{products=list;},render:()=>renderCurrent(),closeProduct:()=>closeModal()};
+window.ScanBridge={
+  products:()=>products,
+  lang:()=>currentLang,
+  quickId:()=>quickEditId,
+  quickStock:()=>quickCurrentStock,
+  setQuickStock:value=>{quickCurrentStock=value;},
+  quickRevision:()=>quickRevision,
+  barcodeAccepted:()=>barcodeAccepted,
+  setBarcodeAccepted:value=>{barcodeAccepted=value;},
+  setHold:value=>{barcodeHoldCode=value||'';barcodeHoldMisses=0;},
+  holdMatches:code=>barcodeAliases(String(code||'').trim()).includes(barcodeHoldCode),
+  storage:()=>localStorage
+};
 
 // ================================================================
 // INITIALISATION
@@ -2790,5 +2817,8 @@ if (!localStorage.getItem('app-lang')) {
   bootData();
 }
 </script>
-<script src="src/production/open-food-facts.js"></script></body>
+<script src="src/production/open-food-facts.js"></script>
+<script src="src/production/scan-catalog.js"></script>
+<script src="src/production/product-sources.js"></script>
+<script src="src/production/scan-session.js"></script></body>
 </html>

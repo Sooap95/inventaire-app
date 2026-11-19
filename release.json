@@ -1,9 +1,9 @@
 {
   "format": "inventaire-production-release",
   "version": 1,
-  "id": "6dabc9e63785eea7f81a579f041c142ff1c4eeab7e42024a735dd778b4cfccd4",
+  "id": "6173211699b25a903baccd6fcf09adb6c2db088866ec3c989a89b13d1c79d5be",
   "sourceCommit": "9fef6311cb75933cc45970ad33a44126da393460",
-  "sourceInputsDirty": false,
+  "sourceInputsDirty": true,
   "publishable": true,
   "projectId": "inventaire-maison-8fd95",
   "databaseId": "(default)",
@@ -12,15 +12,15 @@
   "basePath": "/inventaire-app/",
   "scannerSource": "b571536",
   "files": {
-    "index.html": "26eefa810fee956da996ac05613c7289bc3ea3d192f14ba936530c74d87f2ee7",
+    "index.html": "1efa4f91e097dfd58951fc06f527d6bfb60b777a18e8dc7c983e0fd2e3ad3bd0",
     "manifest.json": "d0741ee3173af84862d870b4b336a170baeaa164b2314dca2a8347fc40373d54",
     "bundle-inputs.json": "bea28558ae5c57c68122176eb6b970a61a8528348862c161413de51fe8afa5b4",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "src/domain/stock.js": "9dcaaeab068183c96e5b59c935d640ee72345c9064cbb7b70194bde855a0beb2",
-    "src/ui/art-deco.css": "53de14ea94ed1b351e64efe43809692ba75437f09d46cc9955a3c5d24c7c2c7d",
+    "src/ui/art-deco.css": "31d6a24c089b25ae26a907abeecb4314d1f0219fb906e822c7b8ca8e2d5d9b71",
     "src/production/target.js": "63e2e1c86acab4cc62999e1ccc6e00e3ba373be6909c78f36140de962a75036e",
     "src/production/app.bundle.js": "355469b10180e22156d987752ba466d960bb51043f67b0ce7d9a753a9cd67c9b",
-    "src/production/open-food-facts.js": "4ac61cdf5733324c78ad81b365f1a34c164b7b9608dc0596f8c4f1a4293ee2c2",
+    "src/production/open-food-facts.js": "7818762e37339e014a57ba2bf656b6f3b4d997a78bce8d58ddbb604379e64b53",
     "src/production/bootstrap.js": "357720170a5b2e2ad7f471a1155c8555fe18d18e6ea452c411889a39f6f57c4a",
     "src/shopping/manual.css": "fb6d81083330d661126b37f44bab304f868a3401f4eef67ce4a4dd0a3a6b9cd8",
     "src/family/family.css": "6bd89fcc05a5dcdf9be2a7fd0c04fc30e6319443baff42a3c5126d4c30c93cc1",
@@ -33,6 +33,10 @@
     "src/preprod/barcode-assets/LICENSE-html5-qrcode.txt": "306bc450da41244fefb92fec6fba30f27afb9d9b0eaa72b96372c23e2338c612",
     "src/preprod/barcode-assets/NOTICE.txt": "5f21d8f742c944bcb40e04a229c2b292f3c1d26089d02406302b875f87fc4b95",
     "src/production/vendor/qrcode-LICENSE.txt": "aaa1f349028a59432eb00222b8ddfe4d2ccebdce04cf8348dcb8d41b7068107b",
-    "src/production/vendor/qrcode-1.0.0.min.js": "c541ef06327885a8415bca8df6071e14189b4855336def4f36db54bde8484f36"
+    "src/production/vendor/qrcode-1.0.0.min.js": "c541ef06327885a8415bca8df6071e14189b4855336def4f36db54bde8484f36",
+    "src/production/scan-catalog.js": "70b86e589cf513bfb5bed0047d8d0a19ba33099ff1dfcde6ee46b19dbe7f3842",
+    "src/production/product-sources.js": "9127603022ea2efd9dc8f43aa99294097be045e8defbf432f0303acd81e67b93",
+    "src/production/scan-session.js": "aa434c527109516a23b6d6f7d3f8bdcf06ccd178f06bed8dd07ac62c218ce480",
+    "docs/SOURCES-SUISSES.md": "22f0e896f0583a0175280de78f94790acedd6940ddb477cc947cdd22b2fcea3d"
   }
 }

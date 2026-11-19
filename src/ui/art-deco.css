@@ -117,9 +117,18 @@ header .subtitle { color:#666e61; font-size:11px; opacity:1; max-width:220px; ov
 .product-card.status-ok { border-left:3px solid #5a805a; }
 .product-card-primary { display:flex; align-items:center; gap:9px; min-height:62px; }
 .product-picture {
-  width:46px; height:46px; flex:0 0 auto; display:grid; place-items:center;
+  width:46px; height:46px; flex:0 0 auto; display:grid; place-items:center; overflow:hidden;
   border-radius:16px 16px 16px 6px; background:#f7e2e8; font-size:25px;
 }
+.product-picture img { width:100%; height:100%; object-fit:cover; }
+.quick-photo, .product-photo { width:96px; height:96px; object-fit:contain; margin:0 auto; background:#f6f0e7; border-radius:16px; }
+.product-photo { width:120px; height:120px; }
+.product-detail-photo { width:100%; max-height:220px; object-fit:contain; border-radius:12px; background:#f6f0e7; margin-bottom:8px; }
+.photo-credit { min-height:0; margin:4px 0 0; color:var(--muted); font-size:11px; }
+.quick-qty-input { font-size:32px; width:6ch; text-align:center; border:0; background:transparent; }
+#quick-stock-display { cursor:pointer; background:none; border:0; font:inherit; color:inherit; }
+#quick-pick { width:100%; min-height:44px; margin-top:8px; }
+#family-modal.scan-submit { opacity:0; }
 .product-card:nth-child(4n+2) .product-picture { background:#e3efdc; }
 .product-card:nth-child(4n+3) .product-picture { background:#f9e9dd; }
 .product-card:nth-child(4n+4) .product-picture { background:#e5eee7; }

@@ -18,9 +18,15 @@ function offName(pr){return (currentLang==='de'?pr.product_name_de:pr.product_na
 async function offFetchProduct(code){
  if(!window.FamilyApp?.allowProductAction()||!window.FamilyApp?.externalLookup()||!navigator.onLine)return null;
  if(offProductCache.has(code))return offProductCache.get(code);
- const response=await fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(code)+'.json?fields=product_name,product_name_fr,product_name_de,brands,categories_tags&lc='+currentLang,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(10000)});
- if(!response.ok)throw Error('OFF_UNAVAILABLE');
- const data=await response.json(),product=data?.status===1?data.product:null;
+ let product=null;
+ if(window.ProductSources){
+  const found=await window.ProductSources.lookup(code,currentLang,{storage:localStorage});
+  product=found?Object.assign({},found.product,{_source:found.source,_image:found.imageFull||found.image}):null;
+ }else{
+  const response=await fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(code)+'.json?fields=product_name,product_name_fr,product_name_de,brands,categories_tags&lc='+currentLang,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(10000)});
+  if(!response.ok)throw Error('OFF_UNAVAILABLE');
+  const data=await response.json();product=data?.status===1?data.product:null;
+ }
  if(offProductCache.size>=30)offProductCache.delete(offProductCache.keys().next().value);
  offProductCache.set(code,product);return product;
 }
@@ -34,7 +40,8 @@ offBarcodeLookup=async function(){
  try{const product=await offFetchProduct(code);if(!current())return;
   if(!product){setOffBanner(t('off_not_found'),'warn');return;}if(name.value.trim())return;
   if(!name.value.trim())name.value=offName(product);
-  const notes=document.getElementById('f-notes');if(product.brands&&product.brands!==name.value&&!notes.value.trim())notes.value=product.brands;
+  const notes=document.getElementById('f-notes');if(product.brands&&product.brands!==name.value&&!notes.value.trim())notes.value=product.brands.split(',')[0].trim();
+  const photo=document.getElementById('product-photo');if(photo&&window.ProductSources?.allowedImage(product._image||'')){photo.hidden=false;photo.alt=name.value;photo.referrerPolicy='no-referrer';photo.src=product._image;const credit=document.getElementById('product-photo-credit');if(credit)credit.textContent=(currentLang==='de'?'Foto: ':'Photo : ')+(product._source||'Open Food Facts');}
   const aisle=guessAisle(product.categories_tags);if(aisle&&!document.getElementById('f-aisle').value)document.getElementById('f-aisle').value=aisle;
   const guess=guessCategory(product.categories_tags);if(guess&&document.getElementById('f-cat').value===category)document.getElementById('f-cat').value=guess;
   setOffBanner(t('off_found'),'ok');showOffCredit();
