@@ -1,0 +1,311 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function anonymousIdentity() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+    function member() { return anonymousIdentity() && activeMember(request.auth.uid); }
+    function activeMember(uid) {
+      let m = get(/databases/$(database)/documents/members/$(uid)).data;
+      return m.uid == uid && m.schemaVersion == 2 && m.role == 'device' && m.status == 'active' && m.authType == 'anonymous';
+    }
+    function keys(d, fields) { return d is map && d.size() == fields.size() && d.keys().hasOnly(fields); }
+    function optionalKeys(d, fields, extras) { return d is map && d.keys().hasAll(fields) && d.keys().hasOnly(fields.concat(extras)); }
+    function text(s, limit) { return s is string && s.size() > 0 && s.size() <= limit && s.matches('.*[^ \\t\\r\\n].*'); }
+    function amount(n) { return n is int && n >= 0 && n <= 1000000000000; }
+    function operationId(s) { return s is string && s.matches('[A-Za-z0-9:_-]{8,160}'); }
+    function stamp(d) {
+      return d.authorUid == request.auth.uid && d.updatedAt == request.time
+        && d.revision is int && d.revision > 0 && operationId(d.lastOperationId);
+    }
+    function linked(d, collection, id, before) {
+      let path = /databases/$(database)/documents/operations/$(d.lastOperationId);
+      let op = getAfter(path).data;
+      // La création de cet événement est elle-même validée par validOperation.
+      // validOperation impose déjà op.after == getAfter(cible).data. Ici,
+      // l'existence nouvelle et le même chemin obligent cette validation jointe.
+      return !exists(path) && op.targetCollection == collection && op.targetId == id
+        && op.beforeRevision == before;
+    }
+    function validProduct(d, id) {
+      return optionalKeys(d, ['schemaVersion','id','revision','name','unit','stockMicros','thresholdMicros','targetMicros',
+        'frequency','lastRestocked','deleted','legacy','createdBy','authorUid','updatedAt','lastOperationId'], ['details','lastPurchaseId'])
+        && d.schemaVersion == 2 && d.id == id && text(id,128) && stamp(d)
+        && text(d.name,180) && text(d.unit,64) && text(d.createdBy,128)
+        && amount(d.stockMicros) && amount(d.thresholdMicros) && amount(d.targetMicros)
+        && d.frequency in ['', 'quotidien','hebdomadaire','mensuel','trimestriel']
+        && (d.lastRestocked == null || d.lastRestocked is timestamp)
+        && d.deleted is bool && d.legacy is map
+        && (!d.keys().hasAny(['details']) || validDetails(d.details))
+        && (d.get('lastPurchaseId',null) == null || operationId(d.lastPurchaseId));
+    }
+    function days(f) { return f == 'quotidien' ? 1 : f == 'hebdomadaire' ? 7 : f == 'mensuel' ? 30 : 90; }
+    function automatic(p) {
+      // Même comparaison IEEE-754 que threshold * 1.5 dans le calcul historique.
+      let present = p.stockMicros / 1000000.0 <= (p.thresholdMicros / 1000000.0) * 1.5
+        || (p.frequency != '' && p.lastRestocked != null
+          && p.lastRestocked + duration.value(days(p.frequency),'d') - request.time < duration.value(7,'d'));
+      return !p.deleted && present && p.targetMicros > p.stockMicros ? p.targetMicros - p.stockMicros : 0;
+    }
+    function validGroup(d, id) {
+      return optionalKeys(d,['schemaVersion','id','revision','productId','name','unit','contributions','checks','checkAll',
+        'automaticChecked','automaticMicros','productRevision','totalMicros','needsReview','authorUid','updatedAt','lastOperationId'], ['fulfilledMicros'])
+        && d.schemaVersion == 1 && d.id == id && text(id,250) && stamp(d)
+        && text(d.name,180) && text(d.unit,64)
+        && (d.productId == null ? id.matches('free_[A-Za-z0-9_-]{8,128}') : text(d.productId,128) && id == 'product_' + d.productId)
+        && d.contributions is map && d.contributions.size() <= 100
+        && d.checks is map && d.checks.size() <= 100 && d.checks.keys().hasOnly(d.contributions.keys())
+        && d.checkAll is bool && d.automaticChecked is bool && d.needsReview is bool
+        && amount(d.automaticMicros) && amount(d.totalMicros) && amount(d.get('fulfilledMicros',0))
+        && d.productRevision is int && d.productRevision >= 0;
+    }
+    function contextCurrent(d) {
+      return d.productId == null ? d.productRevision == 0 && d.automaticMicros == 0
+        : productContext(d);
+    }
+    function productContext(d) {
+      let p = get(/databases/$(database)/documents/products/$(d.productId)).data;
+      return !p.deleted && d.unit == p.unit && d.productRevision == p.revision && d.automaticMicros == automatic(p);
+    }
+    function entry(c, id) {
+      return keys(c,['id','revision','quantityMicros','status','createdBy','authorUid'])
+        && c.id == id && operationId(id) && c.revision is int && c.revision > 0
+        && amount(c.quantityMicros) && c.quantityMicros > 0
+        && c.status in ['active','ignored','removed']
+        && c.authorUid == request.auth.uid && text(c.createdBy,128);
+    }
+    function sameIdentity(d,b) { return d.productId == b.productId && d.name == b.name && d.unit == b.unit; }
+    function sameContext(d,b) { return d.productRevision == b.productRevision && d.automaticMicros == b.automaticMicros; }
+    function sameChecks(d,b) { return d.checks == b.checks && d.checkAll == b.checkAll && d.automaticChecked == b.automaticChecked; }
+    function chosen(total, op) {
+      return op.choice == 'keep' ? total : op.choice == 'set_total' ? op.valueMicros : total + op.valueMicros;
+    }
+    function addEntry(d,b,op,creating) {
+      let c = d.contributions[op.entryId];
+      let base = creating ? d.automaticMicros : b.totalMicros;
+      return op.action == 'add' && op.choice in ['keep','set_total','add_extra']
+        && entry(c,op.entryId) && c.revision == 1 && c.createdBy == request.auth.uid
+        && c.quantityMicros == op.valueMicros && c.status == (op.choice == 'keep' ? 'ignored' : 'active')
+        && !d.needsReview
+        && (creating ? contextCurrent(d) && d.contributions.size() == 1 && d.contributions.keys().hasOnly([op.entryId])
+            && d.checks.size() == 1 && !d.checkAll && !d.automaticChecked
+          : !b.contributions.keys().hasAny([op.entryId]) && !b.needsReview && contextCurrent(b) && sameContext(d,b)
+            && d.contributions.diff(b.contributions).affectedKeys().hasOnly([op.entryId])
+            && d.checks.diff(b.checks).affectedKeys().hasOnly([op.entryId])
+            && d.checkAll == b.checkAll && d.automaticChecked == b.automaticChecked)
+        && d.checks[op.entryId] == false && d.totalMicros == chosen(base,op);
+    }
+    function editEntry(d,b,op) {
+      let c = d.contributions[op.entryId];
+      let old = b.contributions[op.entryId];
+      return op.action == 'edit' && op.choice == 'set_total' && entry(c,op.entryId)
+        && old.status == 'active' && c.status == 'active' && c.createdBy == old.createdBy
+        && c.revision == old.revision + 1 && contextCurrent(b) && sameContext(d,b) && !b.needsReview && !d.needsReview
+        && d.contributions.diff(b.contributions).affectedKeys().hasOnly([op.entryId])
+        && d.checks.diff(b.checks).affectedKeys().hasOnly([op.entryId]) && d.checks[op.entryId] == false
+        && d.checkAll == b.checkAll && d.automaticChecked == b.automaticChecked && d.totalMicros == op.valueMicros;
+    }
+    function removeEntry(d,b,op) {
+      let c = d.contributions[op.entryId];
+      let old = b.contributions[op.entryId];
+      return op.action == 'remove' && op.choice == 'unchanged' && op.valueMicros == 0
+        && old.status == 'active' && entry(c,op.entryId) && c.status == 'removed'
+        && c.quantityMicros == old.quantityMicros && c.createdBy == old.createdBy && c.revision == old.revision + 1
+        && d.contributions.diff(b.contributions).affectedKeys().hasOnly([op.entryId])
+        && sameChecks(d,b) && sameContext(d,b) && d.needsReview && d.totalMicros == b.totalMicros;
+    }
+    function check(d,b,op) {
+      return op.action == 'check' && op.choice == 'unchanged' && op.valueMicros == 0
+        && d.contributions == b.contributions && sameContext(d,b) && d.totalMicros == b.totalMicros && d.needsReview == b.needsReview
+        && d.checkAll == b.checkAll
+        && (op.entryId == null ? contextCurrent(b) && d.checks == b.checks
+          : b.contributions[op.entryId].status == 'active' && d.checks[op.entryId] is bool
+            && d.checks.diff(b.checks).affectedKeys().hasOnly([op.entryId]) && d.automaticChecked == b.automaticChecked);
+    }
+    function checkAll(d,b,op) {
+      return op.action == 'checkAll' && op.entryId == null && op.choice == 'unchanged' && op.valueMicros == 0
+        && d.contributions == b.contributions && contextCurrent(b) && sameContext(d,b) && !b.needsReview && !d.needsReview
+        && d.totalMicros == b.totalMicros && d.checks.size() == 0 && d.automaticChecked == d.checkAll;
+    }
+    function review(d,b,op) {
+      return op.action == 'review' && op.entryId == null && op.choice in ['keep','set_total','add_extra']
+        && d.contributions == b.contributions && d.checks == b.checks && d.checkAll == b.checkAll
+        && d.automaticChecked == (sameContext(d,b) ? b.automaticChecked : false) && contextCurrent(d) && !d.needsReview
+        && d.totalMicros == chosen(b.totalMicros,op);
+    }
+    function groupWrite(d,b,creating) {
+      let op = getAfter(/databases/$(database)/documents/operations/$(d.lastOperationId)).data;
+      return d.get('fulfilledMicros',0) == b.get('fulfilledMicros',0) && (creating ? (op.action == 'add' && op.entryId != null && addEntry(d,b,op,true) || op.action == 'init' && op.entryId == null && op.choice == 'unchanged' && op.valueMicros == 0 && d.productId != null && contextCurrent(d) && d.contributions.size() == 0 && d.checks.size() == 0 && d.automaticChecked == d.checkAll && d.totalMicros == d.automaticMicros && !d.needsReview)
+        : sameIdentity(d,b) && (op.action == 'add' ? op.entryId != null && addEntry(d,b,op,false)
+          : op.action == 'edit' ? op.entryId != null && editEntry(d,b,op)
+          : op.action == 'remove' ? op.entryId != null && removeEntry(d,b,op)
+          : op.action == 'check' ? check(d,b,op)
+          : op.action == 'checkAll' ? checkAll(d,b,op)
+          : op.action == 'review' && review(d,b,op)));
+    }
+    function validDetails(d) {
+      return keys(d,['category','aisle','notes','barcode']) && d.category is string && d.category.size() <= 64
+        && d.aisle is string && d.aisle.size() <= 128 && d.notes is string && d.notes.size() <= 1000
+        && d.barcode is string && d.barcode.size() <= 64;
+    }
+    function compact(d,col,entryId,action) {
+      return col == 'products' ? {'revision':d.revision,'stockMicros':d.stockMicros,'thresholdMicros':d.thresholdMicros,
+        'targetMicros':d.targetMicros,'name':d.name,'unit':d.unit,'frequency':d.frequency,'lastRestocked':d.lastRestocked,
+        'deleted':d.deleted,'details':d.get('details',{}),'lastPurchaseId':d.get('lastPurchaseId',null)}
+        : {'revision':d.revision,'totalMicros':d.totalMicros,'productRevision':d.productRevision,'automaticMicros':d.automaticMicros,
+          'needsReview':d.needsReview,'fulfilledMicros':d.get('fulfilledMicros',0),
+          'entry':entryId != null && action in ['add','edit','remove'] ? d.contributions[entryId] : null,
+          'checked':entryId != null ? d.checks.get(entryId,d.checkAll) : null,'checkAll':d.checkAll,'automaticChecked':d.automaticChecked};
+    }
+    function isProductReceipt(d) {
+      return getAfter(/databases/$(database)/documents/operations/$(d.lastOperationId)).data.action in ['purchase','undoPurchase'];
+    }
+    function isGroupReceipt(d) {
+      return getAfter(/databases/$(database)/documents/operations/$(d.lastOperationId)).data.action in ['purchase','undoPurchase','purchaseFree','undoPurchaseFree'];
+    }
+    function productReceipt(d,b) {
+      let op = getAfter(/databases/$(database)/documents/operations/$(d.lastOperationId)).data;
+      return b.schemaVersion == 2 && stamp(d) && amount(d.stockMicros) && op.valueMicros > 0
+        && d.diff(b).affectedKeys().hasOnly(['stockMicros','lastRestocked','lastPurchaseId','revision','authorUid','updatedAt','lastOperationId'])
+        && (op.action == 'purchase'
+          ? d.stockMicros == b.stockMicros + op.valueMicros && d.lastRestocked == request.time && d.lastPurchaseId == op.id
+            && op.receipt.previousPurchaseId == b.get('lastPurchaseId',null) && op.receipt.previousLastRestocked == b.lastRestocked
+          : undoProduct(d,b,op));
+    }
+    function undoProduct(d,b,op) {
+      let r = op.receipt;
+      let original = get(/databases/$(database)/documents/operations/$(r.compensates)).data;
+      return original.schemaVersion == 2 && original.action == 'purchase' && original.targetId == b.id
+        && op.id == 'undo_' + original.id && op.valueMicros == original.valueMicros
+        && d.stockMicros == b.stockMicros - op.valueMicros
+        && d.lastPurchaseId == r.rollbackPurchaseId && d.lastRestocked == r.rollbackRestocked
+        && (b.get('lastPurchaseId',null) != original.id
+          ? d.lastPurchaseId == b.get('lastPurchaseId',null) && d.lastRestocked == b.lastRestocked
+          : validRollback(r,b.id,original.createdAt));
+    }
+    function validRollback(r,productId,date) {
+      return r.rollbackPurchaseId == null ? r.rollbackRestocked == null || r.rollbackRestocked is timestamp && r.rollbackRestocked <= date
+        : rollbackReceipt(r,productId);
+    }
+    function rollbackReceipt(r,productId) {
+      let p = get(/databases/$(database)/documents/operations/$(r.rollbackPurchaseId)).data;
+      return p.action == 'purchase' && p.targetId == productId && p.createdAt == r.rollbackRestocked
+        && !exists(/databases/$(database)/documents/operations/$('undo_' + r.rollbackPurchaseId));
+    }
+    function afterProductContext(d,b,op) {
+      let p = getAfter(/databases/$(database)/documents/products/$(b.productId)).data;
+      return p.lastOperationId == op.id && d.productRevision == p.revision && d.automaticMicros == automatic(p) && d.unit == p.unit;
+    }
+    function groupReceipt(d,b) {
+      let op = getAfter(/databases/$(database)/documents/operations/$(d.lastOperationId)).data;
+      let r = op.receipt;
+      let buying = op.action in ['purchase','purchaseFree'];
+      return !exists(/databases/$(database)/documents/operations/$(d.lastOperationId)) && stamp(d)
+        && sameIdentity(d,b) && d.contributions == b.contributions && d.checks == b.checks && d.checkAll == b.checkAll
+        && !d.automaticChecked && !d.needsReview && r.groupId == b.id
+        && r.groupBeforeRevision == b.revision && r.groupAfterRevision == d.revision
+        && (b.productId == null
+          ? op.targetCollection == 'shoppingLines' && op.targetId == b.id && d.productRevision == 0 && d.automaticMicros == 0
+          : op.targetCollection == 'products' && op.targetId == b.productId && afterProductContext(d,b,op))
+        && (buying ? !b.needsReview && contextCurrent(b) && r.demandMicros == (op.valueMicros < b.totalMicros ? op.valueMicros : b.totalMicros)
+            && d.totalMicros == b.totalMicros - r.demandMicros && d.get('fulfilledMicros',0) == b.get('fulfilledMicros',0) + r.demandMicros
+          : undoDemand(d,b,op));
+    }
+    function undoDemand(d,b,op) {
+      let original = get(/databases/$(database)/documents/operations/$(op.receipt.compensates)).data;
+      let q = original.receipt.groupId == b.id ? original.receipt.demandMicros : 0;
+      return op.receipt.demandMicros == q && op.choice in ['keep','set_total','add_extra']
+        && d.get('fulfilledMicros',0) == b.get('fulfilledMicros',0) - q
+        && (op.choice == 'keep' ? d.totalMicros == b.totalMicros
+          : op.choice == 'set_total' ? d.totalMicros == op.receipt.choiceValueMicros
+          : op.receipt.choiceValueMicros == q && d.totalMicros == b.totalMicros + q);
+    }
+    function receiptReferences(op) {
+      let r = op.receipt;
+      return keys(r,['groupId','groupBeforeRevision','groupAfterRevision','demandMicros','compensates',
+        'previousPurchaseId','previousLastRestocked','rollbackPurchaseId','rollbackRestocked','choiceValueMicros'])
+        && op.entryId == null && op.valueMicros > 0 && amount(r.demandMicros) && amount(r.choiceValueMicros)
+        && op.action in ['purchase','undoPurchase','purchaseFree','undoPurchaseFree']
+        && (op.action in ['purchase','undoPurchase'] ? op.targetCollection == 'products' && receiptGroupLink(op)
+          : op.targetCollection == 'shoppingLines' && r.groupId == op.targetId && r.groupBeforeRevision == op.beforeRevision && r.groupAfterRevision == op.afterRevision)
+        && (op.action in ['purchase','purchaseFree']
+          ? r.compensates == null && op.choice == 'unchanged' && r.choiceValueMicros == 0
+          : receiptOriginal(op));
+    }
+    function receiptGroupLink(op) {
+      let path = /databases/$(database)/documents/shoppingLines/$('product_' + op.targetId);
+      let r = op.receipt;
+      return exists(path) ? r.groupId == 'product_' + op.targetId && r.groupBeforeRevision == get(path).data.revision
+          && r.groupAfterRevision == r.groupBeforeRevision + 1 && getAfter(path).data.lastOperationId == op.id
+        : r.groupId == null && r.groupBeforeRevision == 0 && r.groupAfterRevision == 0 && r.demandMicros == 0;
+    }
+    function receiptOriginal(op) {
+      let original = get(/databases/$(database)/documents/operations/$(op.receipt.compensates)).data;
+      return op.id == 'undo_' + original.id && original.schemaVersion == 2 && original.targetCollection == op.targetCollection
+        && original.targetId == op.targetId && original.action == (op.action == 'undoPurchase' ? 'purchase' : 'purchaseFree')
+        && op.valueMicros == original.valueMicros && (op.receipt.groupId == null ? op.choice == 'unchanged' : true);
+    }
+    match /members/{uid} {
+      // Seul le statut propre est lisible avant autorisation ; jamais la liste.
+      allow get: if anonymousIdentity() && request.auth.uid == uid;
+      allow list: if false;
+      allow write: if false; // Administration hors client exclusivement.
+    }
+    match /products/{id} {
+      allow read: if member();
+      allow create: if member() && validProduct(request.resource.data,id)
+        && request.resource.data.revision == 1 && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.legacy.size() == 0 && request.resource.data.get('lastPurchaseId',null) == null && !request.resource.data.deleted
+        && linked(request.resource.data,'products',id,0);
+      allow update: if member() && !resource.data.deleted && request.resource.data.revision == resource.data.revision + 1
+        && linked(request.resource.data,'products',id,resource.data.revision)
+        && (isProductReceipt(request.resource.data)
+          ? productReceipt(request.resource.data,resource.data)
+          : validProduct(request.resource.data,id) && request.resource.data.unit == resource.data.unit
+            && request.resource.data.legacy == resource.data.legacy && request.resource.data.createdBy == resource.data.createdBy
+            && (request.resource.data.lastRestocked == resource.data.lastRestocked
+              ? request.resource.data.get('lastPurchaseId',null) == resource.data.get('lastPurchaseId',null)
+              : request.resource.data.get('lastPurchaseId',null) == null));
+      allow delete: if false;
+    }
+    match /shoppingLines/{id} {
+      allow read: if member();
+      allow create: if member() && validGroup(request.resource.data,id) && request.resource.data.revision == 1
+        && linked(request.resource.data,'shoppingLines',id,0) && groupWrite(request.resource.data,{},true);
+      allow update: if member() && validGroup(request.resource.data,id)
+        && request.resource.data.revision == resource.data.revision + 1
+        && (isGroupReceipt(request.resource.data)
+          ? groupReceipt(request.resource.data,resource.data)
+          : linked(request.resource.data,'shoppingLines',id,resource.data.revision)
+            && groupWrite(request.resource.data,resource.data,false));
+      allow delete: if false;
+    }
+    match /operations/{id} {
+      allow read: if member();
+      allow create: if member() && validOperation(request.resource.data,id);
+      allow update,delete: if false;
+    }
+    function validOperation(op,id) {
+      let path = /databases/$(database)/documents/$(op.targetCollection)/$(op.targetId);
+      let after = getAfter(path).data;
+      return optionalKeys(op,['schemaVersion','id','authorUid','createdAt','targetCollection','targetId','beforeRevision',
+        'afterRevision','action','entryId','choice','valueMicros','confirmed','requestHash','after'], ['receipt'])
+        && op.schemaVersion in [1,2] && op.id == id && operationId(id)
+        && op.authorUid == request.auth.uid && op.createdAt == request.time && op.confirmed == true
+        && op.requestHash is string && op.requestHash.matches('[a-f0-9]{64}')
+        && op.targetCollection in ['products','shoppingLines'] && text(op.targetId,250)
+        && op.beforeRevision is int && op.beforeRevision >= 0 && op.afterRevision == op.beforeRevision + 1
+        && (op.beforeRevision == 0 ? !exists(path) : get(path).data.revision == op.beforeRevision)
+        && (op.schemaVersion == 1 ? !op.keys().hasAny(['receipt']) && op.after == after
+          : op.keys().hasAny(['receipt']) && op.after == compact(after,op.targetCollection,op.entryId,op.action))
+        && after.lastOperationId == id && after.revision == op.afterRevision
+        && after.authorUid == request.auth.uid && amount(op.valueMicros)
+        && (op.entryId == null || operationId(op.entryId))
+        && (op.get('receipt',null) != null ? op.schemaVersion == 2 && receiptReferences(op)
+          : op.targetCollection == 'products'
+            ? op.action == 'product.write' && op.entryId == null && op.choice == 'unchanged' && op.valueMicros == 0
+            : op.action in ['add','edit','remove','check','checkAll','review','init']);
+    }
+    match /{other=**} { allow read,write: if false; }
+  }
+}

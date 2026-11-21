@@ -1,0 +1,16 @@
+{
+  "projectId": "inventaire-maison-8fd95",
+  "projectNumber": "272639034410",
+  "databaseId": "(default)",
+  "location": "eur3",
+  "origin": "https://sooap95.github.io",
+  "basePath": "/inventaire-app/",
+  "firebase": {
+    "apiKey": "AIzaSyAfzXb6eSKaFXPc7kkLnXfmHcO1kvpuCSk",
+    "authDomain": "inventaire-maison-8fd95.firebaseapp.com",
+    "projectId": "inventaire-maison-8fd95",
+    "storageBucket": "inventaire-maison-8fd95.firebasestorage.app",
+    "messagingSenderId": "272639034410",
+    "appId": "1:272639034410:web:18c837ff78c3eefa5faf53"
+  }
+}

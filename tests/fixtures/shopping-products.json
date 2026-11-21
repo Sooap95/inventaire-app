@@ -1,0 +1,6 @@
+[
+ {"id":"fake-lait","name":"Lait","stock":1,"threshold":1,"target":3,"unit":"L","category":"Alimentation","aisle":"🧃 Boissons","restockHistory":[]},
+ {"id":"fake-beurre","name":"Beurre","stock":4,"threshold":1,"target":3,"unit":"paquets","category":"Alimentation","aisle":"🧀 Crèmerie & Charcuterie","restockHistory":[]},
+ {"id":"fake-aptamil","name":"Aptamil","stock":3,"threshold":1,"target":3,"unit":"boîtes","category":"Bébé","aisle":"👶 Bébé","restockHistory":[]},
+ {"id":"fake-oeufs","name":"Œufs","stock":4,"threshold":1,"target":3,"unit":"boîtes","category":"Alimentation","aisle":"🧀 Crèmerie & Charcuterie","restockHistory":[]}
+]

@@ -1,0 +1,131 @@
+{
+  "format": "inventaire-a2-local-baseline",
+  "version": 1,
+  "base": "9db1d20",
+  "a0ManifestSha256": "556315add3e62475d288144e986489acb0386eb3b9fe006829e9a9ab1c95a462",
+  "approvedChanged": [
+    "security/src/emulator-writer.mjs",
+    "security/src/family-writer.mjs",
+    "src/family/identity.js",
+    "src/family/transport.js",
+    "src/family/ui.js"
+  ],
+  "files": {
+    "index.html": {
+      "before": "e0a92b1f3d5d451ddcc336ee21ced55f3f0f525e86c1826732a5af35d390bf5d",
+      "after": "e0a92b1f3d5d451ddcc336ee21ced55f3f0f525e86c1826732a5af35d390bf5d"
+    },
+    "sw.js": {
+      "before": "9513e818f2367bb8773da6c045f0797d5d9d174369d17ce44c2733d3b0c86999",
+      "after": "9513e818f2367bb8773da6c045f0797d5d9d174369d17ce44c2733d3b0c86999"
+    },
+    "manifest.json": {
+      "before": "6132b826b7029f8b6d8c14bfc0f938e60cfd68cd5bda2a25ab46ce5d8bcbc16a",
+      "after": "6132b826b7029f8b6d8c14bfc0f938e60cfd68cd5bda2a25ab46ce5d8bcbc16a"
+    },
+    "src/ui/art-deco.css": {
+      "before": "53de14ea94ed1b351e64efe43809692ba75437f09d46cc9955a3c5d24c7c2c7d",
+      "after": "53de14ea94ed1b351e64efe43809692ba75437f09d46cc9955a3c5d24c7c2c7d"
+    },
+    "src/domain/stock.js": {
+      "before": "9dcaaeab068183c96e5b59c935d640ee72345c9064cbb7b70194bde855a0beb2",
+      "after": "9dcaaeab068183c96e5b59c935d640ee72345c9064cbb7b70194bde855a0beb2"
+    },
+    "src/family/bootstrap.js": {
+      "before": "4aef6321139582fd22722e917745c833670dae162caa1a3ba560897503e1bc71",
+      "after": "4aef6321139582fd22722e917745c833670dae162caa1a3ba560897503e1bc71"
+    },
+    "src/family/runtime.js": {
+      "before": "1c27acaf414533fa4140503ef8d74a6679c03891d783e34042eafbeb5f111022",
+      "after": "1c27acaf414533fa4140503ef8d74a6679c03891d783e34042eafbeb5f111022"
+    },
+    "src/family/identity.js": {
+      "before": "e627e6220fb6e23b5e8dff4aee5aa537ae8aea383da3420de9db51e9886eb809",
+      "after": "0c27671404b5b689caefce04928fb9f862972370e917a543a89d4077e5621ce6"
+    },
+    "src/family/transport.js": {
+      "before": "4f1b3a5f46e435a07c716b2825e1dbea12c82d808bba3ff1030441cd736d2bd1",
+      "after": "0fafcc940cccac04c8a1d91439ffa76f2c9e5a842be1b6adc3c20b52dbea2457"
+    },
+    "src/family/membership.js": {
+      "before": "99d23a0f6549b37c210d28f30b6925c99a757a4648baf46b239f20225b85fd43",
+      "after": "99d23a0f6549b37c210d28f30b6925c99a757a4648baf46b239f20225b85fd43"
+    },
+    "src/family/ui.js": {
+      "before": "c565c141ea5f3df16693eee33d8920ac316164ffdfa156dfde38a8943809f537",
+      "after": "9067f17d0ad2ac722c8b9c83c50231740c42204fd1bc0587052ac5711a242018"
+    },
+    "src/family/engine.js": {
+      "before": "d0dafe77fab5876bc7f544eba3ebcc14a3a7fda70296f1432a2e8b208659f69f",
+      "after": "d0dafe77fab5876bc7f544eba3ebcc14a3a7fda70296f1432a2e8b208659f69f"
+    },
+    "src/family/state.js": {
+      "before": "e031679639f484b6608a8abfcd70291b870baa8def194c6cc4fe86b144441289",
+      "after": "e031679639f484b6608a8abfcd70291b870baa8def194c6cc4fe86b144441289"
+    },
+    "src/family/store.js": {
+      "before": "2e8e39edc182eab61d08875bd72750fdac91987917cb81d86c0e4380853602a6",
+      "after": "2e8e39edc182eab61d08875bd72750fdac91987917cb81d86c0e4380853602a6"
+    },
+    "src/family/quick-stock.js": {
+      "before": "8ccdd7e68ec71647c3142d45e9a3bb384c698fb3250643e83fd13be52aa028e0",
+      "after": "8ccdd7e68ec71647c3142d45e9a3bb384c698fb3250643e83fd13be52aa028e0"
+    },
+    "src/family/quick-stock-text.js": {
+      "before": "d0903ac6964486b2b8ed0886e6ff24beb7fd859cf78ca3311f46789c67a1878f",
+      "after": "d0903ac6964486b2b8ed0886e6ff24beb7fd859cf78ca3311f46789c67a1878f"
+    },
+    "src/shopping/domain.js": {
+      "before": "4d3988739214f88567062422cf71893a55b9d4923e71d4c9c10ca694735f07cd",
+      "after": "4d3988739214f88567062422cf71893a55b9d4923e71d4c9c10ca694735f07cd"
+    },
+    "src/mobile/runtime.js": {
+      "before": "f98ef28d82226140a2a8cb31097ad1b9fd53e86b364455a3b08661d72c5decb4",
+      "after": "f98ef28d82226140a2a8cb31097ad1b9fd53e86b364455a3b08661d72c5decb4"
+    },
+    "security/firestore.rules": {
+      "before": "ca8bb76d5b31eec19396bf0a7d764d42e77f0c3f950671aedf6a368067de8efd",
+      "after": "ca8bb76d5b31eec19396bf0a7d764d42e77f0c3f950671aedf6a368067de8efd"
+    },
+    "security/firestore.indexes.json": {
+      "before": "24e0f084bc503d4c0f3fcf05af9ab69eaf2573bc697a9dc0862b01b57bfd0089",
+      "after": "24e0f084bc503d4c0f3fcf05af9ab69eaf2573bc697a9dc0862b01b57bfd0089"
+    },
+    "security/firebase.emulator.json": {
+      "before": "54aad9fe980db9b3e6dc7741ce65e9ced08ffd2178e9bc6873ddc6dcc4ff780a",
+      "after": "54aad9fe980db9b3e6dc7741ce65e9ced08ffd2178e9bc6873ddc6dcc4ff780a"
+    },
+    "security/src/contracts.mjs": {
+      "before": "2ba4535ffe3a418e7e88ca50bdc2313ee15f5d22d6828752f6b8f03adc949ee1",
+      "after": "2ba4535ffe3a418e7e88ca50bdc2313ee15f5d22d6828752f6b8f03adc949ee1"
+    },
+    "security/src/family-writer.mjs": {
+      "before": "8c1a1a6cdd1424eb27b803ee1693fafb6d6f10cfd2c1fa174cfee06bb2a8fe12",
+      "after": "050c11dd9f5bfc1dd9b58904de7475f7d7626885b057007ffb96b7be4217d70b"
+    },
+    "security/src/emulator-writer.mjs": {
+      "before": "5f70e4ab543bc5b8b0afc6b521a9a587ddb6b2cd4448d00b99af1d5b693a4ed9",
+      "after": "fe904d290d5a6f1966e1ea677dd30008fcc48583510dec7da5d75716058f3f05"
+    },
+    "security/src/emulator-admin.mjs": {
+      "before": "26fecccc5d0fb6c7c8d1f153846d67e23c6b3514a010a658bc03108fcf461ab4",
+      "after": "26fecccc5d0fb6c7c8d1f153846d67e23c6b3514a010a658bc03108fcf461ab4"
+    },
+    "security/src/device-admin.mjs": {
+      "before": "b5d51aca113f01a5e2e5d289c305bd3d16efb619e384fdaa48e7237a309b655f",
+      "after": "b5d51aca113f01a5e2e5d289c305bd3d16efb619e384fdaa48e7237a309b655f"
+    },
+    "security/src/backup.mjs": {
+      "before": "34f8c2a5a2425cadaf098308f91f8e7dd80ea0c63fdd29dce79f4a18635b44c9",
+      "after": "34f8c2a5a2425cadaf098308f91f8e7dd80ea0c63fdd29dce79f4a18635b44c9"
+    },
+    "package-lock.json": {
+      "before": "8b18f6a46be017559a99142ca2b58618f927f54ea888cd8923ba6c264226ba6c",
+      "after": "8b18f6a46be017559a99142ca2b58618f927f54ea888cd8923ba6c264226ba6c"
+    },
+    "security/package-lock.json": {
+      "before": "1507d2b5d05f4840124ab7b344ec0eb2403d320a82fbf4d8ecd903beb4912f4b",
+      "after": "1507d2b5d05f4840124ab7b344ec0eb2403d320a82fbf4d8ecd903beb4912f4b"
+    }
+  }
+}

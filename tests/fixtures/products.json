@@ -1,0 +1,4 @@
+[
+  { "id": "fiction-lait", "name": "Lait fictif", "stock": 1, "threshold": 1, "target": 3, "unit": "L", "frequency": "hebdomadaire", "lastRestocked": "2026-01-01T12:00:00.000Z", "restockHistory": [{ "date": "2026-01-01T12:00:00.000Z", "qty": 3, "by": "Test" }], "unknownLegacyField": { "preserve": true } },
+  { "id": "fiction-riz", "name": "Riz fictif", "stock": 2.5, "threshold": 1, "target": 4, "unit": "kg", "notes": "Données entièrement fictives" }
+]
