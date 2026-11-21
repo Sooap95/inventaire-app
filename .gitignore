@@ -1,0 +1,12 @@
+node_modules/
+vendor/
+test-results/
+__pycache__/
+*.local.json
+*.pem
+*.key
+dist/
+artifacts/
+security/.cache/
+firestore-debug.log
+firebase-debug.log

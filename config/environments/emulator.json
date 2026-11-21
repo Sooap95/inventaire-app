@@ -1,0 +1,1 @@
+{"version":1,"mode":"emulator","origin":"http://127.0.0.1:8769","projectId":"demo-inventaire-v02","databaseId":"(default)","firebase":null,"emulators":{"auth":"http://127.0.0.1:9099","firestore":"http://127.0.0.1:8180"},"services":["anonymousAuth","firestore"]}

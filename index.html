@@ -467,11 +467,9 @@
   <div id="tab-shopping" style="display:none">
     <div class="shopping-header">
       <h2 data-i18n="shopping_title">Liste de courses</h2>
-      <div class="shop-view-toggle">
-        <button class="btn btn-accent btn-sm" id="sv-list-btn" onclick="setShoppingView('list')" data-i18n="sv_list">📝 Liste</button>
-        <button class="btn btn-outline btn-sm" id="sv-shop-btn" onclick="setShoppingView('shop')" data-i18n="sv_shop">🛍️ Faire les courses</button>
-      </div>
+      <p class="course-lead" data-i18n="course_lead">Une seule liste pour préparer et acheter. Cochez, ajustez, puis finalisez.</p>
     </div>
+    <button type="button" class="btn btn-accent" id="course-finalize" onclick="finalizeCourses()">Finaliser les courses</button>
 
     <div class="sm-output-actions" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-bottom:12px">
         <button class="btn btn-outline btn-sm" onclick="printShopping()" data-i18n="btn_print">🖨️ Imprimer</button>
@@ -831,7 +829,7 @@ const TRANSLATIONS = {
     last_buy: '🕓 Dernier achat : {time}', edited_by: '✏️ Modifié par {name} · {time}',
     no_products: 'Aucun produit trouvé',
     // Courses
-    shopping_title: 'Liste de courses', sv_list: '📝 Liste', sv_shop: '🛍️ Faire les courses',
+    shopping_title: 'Liste de courses', course_lead: 'Une seule liste pour préparer et acheter. Cochez, ajustez, puis finalisez.', sv_list: '📝 Liste', sv_shop: '🛍️ Faire les courses',
     btn_print: '🖨️ Imprimer', btn_copy: '📋 Copier',
     all_in_stock: 'Tout est en stock !', all_in_stock_sub: "Aucun produit n'est en dessous de son seuil minimum.",
     nothing_to_buy: 'Rien à acheter !', nothing_to_buy_sub: 'Tous les produits sont au-dessus de leur seuil.',
@@ -922,7 +920,7 @@ const TRANSLATIONS = {
     badge_soon: '⏰ Bald', badge_suggested: 'Vorschlag', badge_urgent: 'Dringend', badge_low: 'Wenig',
     last_buy: '🕓 Letzter Kauf: {time}', edited_by: '✏️ Geändert von {name} · {time}',
     no_products: 'Kein Produkt gefunden',
-    shopping_title: 'Einkaufsliste', sv_list: '📝 Liste', sv_shop: '🛍️ Einkaufen',
+    shopping_title: 'Einkaufsliste', course_lead: 'Eine einzige Liste zum Vorbereiten und Einkaufen. Abhaken, Menge anpassen, dann abschließen.', sv_list: '📝 Liste', sv_shop: '🛍️ Einkaufen',
     btn_print: '🖨️ Drucken', btn_copy: '📋 Kopieren',
     all_in_stock: 'Alles auf Lager!', all_in_stock_sub: 'Kein Produkt unter dem Mindestbestand.',
     nothing_to_buy: 'Nichts zu kaufen!', nothing_to_buy_sub: 'Alle Produkte sind über ihrem Schwellenwert.',
@@ -2009,14 +2007,15 @@ let shopSnapshot = [];
 let shopDone = new Set();
 
 function setShoppingView(view) {
-  shoppingView = view;
-  document.getElementById('shopping-list-view').style.display = view === 'list' ? '' : 'none';
-  document.getElementById('shopping-mode-view').style.display = view === 'shop' ? '' : 'none';
-  document.getElementById('sv-list-btn').className = 'btn btn-sm ' + (view === 'list' ? 'btn-accent' : 'btn-outline');
-  document.getElementById('sv-shop-btn').className = 'btn btn-sm ' + (view === 'shop' ? 'btn-accent' : 'btn-outline');
-  if (view === 'list') renderShopping();
-  if (view === 'shop') enterShoppingMode();
+  shoppingView = 'list';
+  document.getElementById('shopping-list-view').style.display = '';
+  const shop = document.getElementById('shopping-mode-view');
+  if (shop) shop.style.display = 'none';
+  renderShopping();
   updateMicFloat();
+}
+function finalizeCourses() {
+  if (window.FamilyApp?.openReview) return window.FamilyApp.openReview();
 }
 
 // Entre dans le mode courses : fige la liste (à acheter + à anticiper, feature #3.1)
