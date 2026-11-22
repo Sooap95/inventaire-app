@@ -1,4 +1,4 @@
-// src/production/target.js
+// config/production/binding.json
 var binding_default = {
   projectId: "inventaire-maison-8fd95",
   projectNumber: "272639034410",
@@ -15,6 +15,8 @@ var binding_default = {
     appId: "1:272639034410:web:18c837ff78c3eefa5faf53"
   }
 };
+
+// src/preprod/target.js
 var PREPROD = Object.freeze({ projectId: "inventaire-v02-preprod-a1", projectNumber: "319106753418", databaseId: "(default)", location: "europe-west6", origin: "https://inventaire-maison-v02-recette-sync.pages.dev" });
 var TargetPolicyError = class extends Error {
   constructor(message) {
@@ -22,6 +24,8 @@ var TargetPolicyError = class extends Error {
     this.code = "target-policy-denied";
   }
 };
+
+// src/production/target.js
 var BINDING = Object.freeze({ ...binding_default, firebase: Object.freeze({ ...binding_default.firebase }) });
 var fail = (code) => {
   throw new TargetPolicyError(code);
