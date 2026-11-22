@@ -1,0 +1,48 @@
+name: Publication manuelle
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Écrire PUBLIER. Un push ou une fusion ne lancent pas ce flux.
+        required: true
+        type: string
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deployer:
+    if: github.event.inputs.confirmation == 'PUBLIER'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: https://sooap95.github.io/inventaire-app/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refus si la coquille n'est pas publiable
+        run: |
+          node --input-type=module <<'EOF'
+          import { existsSync, readFileSync } from 'node:fs';
+          const release = JSON.parse(readFileSync('release.json', 'utf8'));
+          if (release.publishable !== true) {
+            console.error('release.json publishable n’est pas true. Aucun artifact.');
+            process.exit(1);
+          }
+          if (!existsSync('dist/production/index.html')) {
+            console.error('dist/production/index.html absent. Aucun artifact.');
+            process.exit(1);
+          }
+          const rules = 'dist/production/security/firestore.rules';
+          if (existsSync(rules)) {
+            console.error('Les règles Firestore ne partent pas avec la coquille.');
+            process.exit(1);
+          }
+          console.log('Garde locale passée. Le déploiement attend encore l’environnement github-pages.');
+          EOF
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/production
+      - uses: actions/deploy-pages@v4
