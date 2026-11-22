@@ -3,6 +3,7 @@
   "firebaseSdk": true,
   "cloudExecutionAuthorized": true,
   "inputs": [
+    "config/production/binding.json",
     "security/node_modules/@firebase/app/dist/esm/index.esm.js",
     "security/node_modules/@firebase/auth/dist/esm/index-Bz2J43nW.js",
     "security/node_modules/@firebase/auth/dist/esm/index.js",
@@ -46,7 +47,6 @@
     "src/production/policy.mjs",
     "src/production/runtime.js",
     "src/production/target.js",
-    "src/shopping/checkout.js",
     "src/shopping/domain.js"
   ]
 }
